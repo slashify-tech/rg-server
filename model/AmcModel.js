@@ -33,7 +33,6 @@ const customerPersonalDetais = mongoose.Schema({
     type: String,
     required: false,
   },
-<<<<<<< HEAD
   city:{
     type:String
   },
@@ -43,8 +42,6 @@ const customerPersonalDetais = mongoose.Schema({
   dob:{
     type:String
   }
-=======
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
 });
 
 const amcVehicleDetailSchema = mongoose.Schema({
@@ -54,10 +51,7 @@ const amcVehicleDetailSchema = mongoose.Schema({
   fuelType: {
     type: String,
   },
-<<<<<<< HEAD
 
-=======
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
   vinNumber: {
     type: String,
   },
@@ -89,21 +83,17 @@ const amcVehicleDetailSchema = mongoose.Schema({
   gmEmail: {
     type: String,
   },
-<<<<<<< HEAD
   rmName: {
     type: String,
   },
   rmEmployeeId: {
     type: String,
   },
-=======
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
   rmEmail: {
     type: String,
   },
 });
 
-<<<<<<< HEAD
 const uploadDataSchema = mongoose.Schema({
   serviceVinNumber: {
     type: String,
@@ -130,28 +120,20 @@ const uploadDataSchema = mongoose.Schema({
 
 });
 
-=======
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
 const AMCschema = mongoose.Schema(
   {
     customerDetails: customerPersonalDetais,
     vehicleDetails: amcVehicleDetailSchema,
-<<<<<<< HEAD
     amcExpense: [uploadDataSchema],
-=======
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
     amcStatus: {
       type: String,
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
-<<<<<<< HEAD
     customId: {
       type: String,
       required: true,
     },
-=======
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

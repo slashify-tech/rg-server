@@ -6,13 +6,10 @@ const {
 } = require("../helper/emailFunction");
 const BuyBacks = require("../model/BuyBackModel");
 const User = require("../model/User");
-<<<<<<< HEAD
 const fs = require("fs");
 const path = require("path");
 const { parse: json2csv } = require("json2csv");
 const { formatNumber } = require("../helper/countreunvtion");
-=======
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
 
 exports.BuyBackFormData = async (req, res) => {
   try {
@@ -33,7 +30,6 @@ exports.BuyBackFormData = async (req, res) => {
       });
     }
 
-<<<<<<< HEAD
     const currentYear = new Date().getFullYear();
     const last5DigitsOfVin = vinNumber.slice(-5);
     const customId = `Raam-BB-${currentYear}-${last5DigitsOfVin}`;
@@ -41,10 +37,6 @@ exports.BuyBackFormData = async (req, res) => {
     const newBuyBack = new BuyBacks({
       ...BuyBack,
       customId,
-=======
-    const newBuyBack = new BuyBacks({
-      ...BuyBack,
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -115,7 +107,6 @@ exports.updateBuyBackStatus = async (req, res) => {
   try {
     const { id, type } = req.body;
     const { reason } = req.query;
-<<<<<<< HEAD
     const validTypes = [
       "pending",
       "approved",
@@ -123,9 +114,6 @@ exports.updateBuyBackStatus = async (req, res) => {
       "approvedReq",
       "reqCancel",
     ];
-=======
-    const validTypes = ["pending", "approved", "rejected", "approvedReq"];
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
 
     // Validate policy type
     if (!validTypes.includes(type)) {
@@ -134,20 +122,11 @@ exports.updateBuyBackStatus = async (req, res) => {
 
     // Find the policy by ID
     const buyBackdata = await BuyBacks.findById(id);
-<<<<<<< HEAD
 
     if (!buyBackdata) {
       return res.status(404).json({ message: "Buyback not found." });
     }
     const agent = await User.findById(buyBackdata.createdBy);
-=======
-    if (!buyBackdata) {
-      return res.status(404).json({ message: "Buyback not found." });
-    }
-
-    const agent = await User.findById(buyBackdata.userId);
-
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
     if (type === "approvedReq" && buyBackdata.isCancelReq === "reqCancel") {
       buyBackdata.isCancelReq = "approvedReq";
       await buyBackdata.save();
@@ -157,7 +136,6 @@ exports.updateBuyBackStatus = async (req, res) => {
         isCancelReq: buyBackdata.isCancelReq,
       });
     }
-<<<<<<< HEAD
     if (type === "reqCancel") {
       buyBackdata.isCancelReq = "reqCancel";
       await buyBackdata.save();
@@ -168,9 +146,6 @@ exports.updateBuyBackStatus = async (req, res) => {
         status: 200,
       });
     }
-=======
-
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
     // Handle rejection case
     if (type === "rejected") {
       if (!reason) {
@@ -196,14 +171,10 @@ exports.updateBuyBackStatus = async (req, res) => {
         agent.agentName,
         reason,
         "Buyback",
-<<<<<<< HEAD
         buyBackdata.vehicleDetails.vinNumber,
         buyBackdata.customId,
         "Buyback",
         "Raam4Wheelers LLP"
-=======
-        AMCdata.vinNumber
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
       );
 
       return res
@@ -320,13 +291,9 @@ exports.buyBackById = async (req, res) => {
 
 exports.getAllBuyBackLists = async (req, res) => {
   const { page = 1, limit = 10, search = "", id, status } = req.query;
-<<<<<<< HEAD
   const {roleType, location} = req.user
   
    console.log(req.user)
-=======
-
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
   try {
     const query = {};
     const orConditions = [];
@@ -353,25 +320,17 @@ exports.getAllBuyBackLists = async (req, res) => {
     if (search) {
       query["vehicleDetails.vinNumber"] = { $regex: search, $options: "i" };
     }
-<<<<<<< HEAD
     if (roleType === "1" && location) {
       query["vehicleDetails.dealerLocation"] = location;
     }
-=======
-
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
     // console.log("Constructed Query:", JSON.stringify(query, null, 2));
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-<<<<<<< HEAD
     const data = await BuyBacks.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
-=======
-    const data = await BuyBacks.find(query).skip(skip).limit(parseInt(limit));
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
     const totalCount = await BuyBacks.countDocuments(query);
 
     if (!data || data.length === 0) {
@@ -400,12 +359,7 @@ exports.buyBackResubmit = async (req, res) => {
   const { buyBackId } = req.query;
 
   try {
-<<<<<<< HEAD
     const buyBackdata = await BuyBacks.findById({ _id: buyBackId });
-=======
-    const buyBackdata = await BuyBacks.findOne({ _id: buyBackId });
-
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
     if (!buyBackdata) {
       return res.status(404).json({ message: "Buy Back not found" });
     }
@@ -420,7 +374,6 @@ exports.buyBackResubmit = async (req, res) => {
     console.log(error);
   }
 };
-<<<<<<< HEAD
 
 exports.getBuyBackStats = async (req, res) => {
   try {
@@ -563,5 +516,3 @@ exports.downloadBuyBackCsv = async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 };
-=======
->>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
