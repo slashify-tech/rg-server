@@ -14,11 +14,14 @@ const vehicleDetailsSchema = mongoose.Schema({
     type: String,
     required: false,
   },
+<<<<<<< HEAD
   dealerLocation: {
     type: String,
     required: false,
   },
 
+=======
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
   agreementStartDate: {
     type: String,
     required: false,
@@ -42,16 +45,20 @@ const vehicleDetailsSchema = mongoose.Schema({
   gmEmail: {
     type: String,
   },
+<<<<<<< HEAD
   rmName: {
     type: String,
   },
   rmEmployeeId: {
     type: String,
   },
+=======
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
   rmEmail: {
     type: String,
   },
 });
+<<<<<<< HEAD
 const buyBackDetailSchema = mongoose.Schema({
   deliveryDate: {
     type: String,
@@ -66,21 +73,30 @@ const buyBackDetailSchema = mongoose.Schema({
     type: String,
   },
 });
+=======
+
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
 const BuyBackSchema = mongoose.Schema(
   {
     customerDetails: customerPersonalDetais,
     vehicleDetails: vehicleDetailsSchema,
+<<<<<<< HEAD
     buyBackDetails: buyBackDetailSchema,
+=======
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
     buyBackStatus: {
       type: String,
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
+<<<<<<< HEAD
 
     customId: {
       type: String,
       required: true,
     },
+=======
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

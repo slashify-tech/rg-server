@@ -2,10 +2,13 @@ const { AgentPolicyRejectedEmail } = require("../helper/emailFunction");
 const { AMCs } = require("../model/AmcModel");
 const Invoice = require("../model/InvoiceModel");
 const User = require("../model/User");
+<<<<<<< HEAD
 const fs = require("fs");
 const path = require("path");
 const { parse: json2csv } = require("json2csv");
 const { formatNumber } = require("../helper/countreunvtion");
+=======
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
 
 exports.AmcFormData = async (req, res) => {
   try {
@@ -26,6 +29,7 @@ exports.AmcFormData = async (req, res) => {
       });
     }
 
+<<<<<<< HEAD
     const currentYear = new Date().getFullYear();
     const last5DigitsOfVin = vinNumber.slice(-5);
     const customId = `Raam-AMC-${currentYear}-${last5DigitsOfVin}`;
@@ -33,6 +37,10 @@ exports.AmcFormData = async (req, res) => {
     const newAmc = new AMCs({
       ...amcData,
       customId,
+=======
+    const newAmc = new AMCs({
+      ...amcData,
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -102,6 +110,7 @@ exports.updateAMCStatus = async (req, res) => {
   try {
     const { id, type } = req.body;
     const { reason } = req.query;
+<<<<<<< HEAD
     const validTypes = [
       "pending",
       "approved",
@@ -109,6 +118,9 @@ exports.updateAMCStatus = async (req, res) => {
       "approvedReq",
       "reqCancel",
     ];
+=======
+    const validTypes = ["pending", "approved", "rejected", "approvedReq", "reqCancel"];
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
 
     // Validate policy type
     if (!validTypes.includes(type)) {
@@ -117,7 +129,11 @@ exports.updateAMCStatus = async (req, res) => {
 
     const InvoiceCheck = await Invoice.findOne({ serviceId: id });
 
+<<<<<<< HEAD
     if (InvoiceCheck && !type) {
+=======
+    if (InvoiceCheck) {
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
       return res
         .status(400)
         .json({ message: "Invoice already exist for this AMC" });
@@ -141,8 +157,13 @@ exports.updateAMCStatus = async (req, res) => {
         status: 200,
       });
     }
+<<<<<<< HEAD
     if (type === "reqCancel") {
       AMCdata.isCancelReq = "reqCancel";
+=======
+    if(type === "reqCancel"){
+      AMCdata.isCancelReq = "reqCancel"
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
       await AMCdata.save();
 
       return res.status(200).json({
@@ -177,10 +198,14 @@ exports.updateAMCStatus = async (req, res) => {
         agent.agentName,
         reason,
         "AMC(Annual Maintenance Contract)",
+<<<<<<< HEAD
         AMCdata.vehicleDetails.vinNumber,
         AMCdata.customId,
         "AMC",
         "Raam4Wheelers LLP"
+=======
+        AMCdata.vinNumber
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
       );
 
       return res.status(200).json({ message: "AMC rejected", AMCdata });
@@ -294,7 +319,11 @@ exports.amcDataById = async (req, res) => {
 
 exports.getAllAmcList = async (req, res) => {
   const { page = 1, limit = 10, search = "", id, status } = req.query;
+<<<<<<< HEAD
    const {roleType, location} = req.user
+=======
+
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
   try {
     // Construct query
     const query = {};
@@ -311,7 +340,14 @@ exports.getAllAmcList = async (req, res) => {
         orConditions.push({ isDisabled: status === "true" });
       } else if (typeof status === "string") {
         orConditions.push({
+<<<<<<< HEAD
           $or: [{ amcStatus: status }, { isCancelReq: status }],
+=======
+          $or: [
+            { amcStatus: status },
+            { isCancelReq: status },
+          ],
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
         });
       }
     }
@@ -323,18 +359,26 @@ exports.getAllAmcList = async (req, res) => {
     if (search) {
       query["vehicleDetails.vinNumber"] = { $regex: search, $options: "i" };
     }
+<<<<<<< HEAD
     if (roleType === "1" && location) {
       query["vehicleDetails.dealerLocation"] = location;
     }
     
+=======
+
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
     // Pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Fetch data
+<<<<<<< HEAD
     const data = await AMCs.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
+=======
+    const data = await AMCs.find(query).skip(skip).limit(parseInt(limit));
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
     const totalCount = await AMCs.countDocuments(query);
 
     if (!data || data.length === 0) {
@@ -359,6 +403,10 @@ exports.getAllAmcList = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
 exports.AMCResubmit = async (req, res) => {
   const { amcId } = req.query;
 
@@ -379,6 +427,7 @@ exports.AMCResubmit = async (req, res) => {
     console.log(error);
   }
 };
+<<<<<<< HEAD
 
 exports.addExpenseData = async (req, res) => {
   try {
@@ -626,3 +675,5 @@ exports.downloadAmcCsv = async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 };
+=======
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04

@@ -7,6 +7,7 @@ exports.getNextPolicyId = async () => {
       { new: true, upsert: true }
     );
     return counter.count;
+<<<<<<< HEAD
   };
 
 
@@ -21,3 +22,6 @@ exports.getNextPolicyId = async () => {
     return num.toString(); 
   };
   
+=======
+  };
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04

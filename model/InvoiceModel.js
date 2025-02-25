@@ -37,6 +37,7 @@ const vehicleDetailSchema = mongoose.Schema({
   gmEmail: {
     type: String,
   },
+<<<<<<< HEAD
   rmName: {
     type: String,
   },
@@ -46,6 +47,11 @@ const vehicleDetailSchema = mongoose.Schema({
   rmEmail: {
     type: String,
   },
+=======
+  rmEmail:{
+    type: String,
+  }
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
 });
 const invoiceSchema = mongoose.Schema(
   {
@@ -60,10 +66,14 @@ const invoiceSchema = mongoose.Schema(
     serviceType: {
       type: String,
       required: true,
+<<<<<<< HEAD
       enum: ["BuyBacks", "AMCs", "EwPolicy"],
     },
     location:{
       type: String
+=======
+      enum: ["BuyBacks", "AMCs"],
+>>>>>>> c1503c0d833e5889b7aecd7bf5d817f7f2bbbd04
     },
 
     billingDetail: customerPersonalDetais,
