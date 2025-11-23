@@ -442,7 +442,7 @@ exports.amcDataById = async (req, res) => {
       });
     }
 
-    // Build the query dynamically based on available parameters
+    // Build query
     const query = {};
     if (id) query._id = id;
     if (status) query.status = status;
@@ -455,10 +455,20 @@ exports.amcDataById = async (req, res) => {
       });
     }
 
+    // Determine which amount to show
+    const showAmount =
+      data.extendedPolicy?.additionalPrice ||
+      data.vehicleDetails?.total ||
+      0;
+
     return res.status(200).json({
       message: "Data fetched successfully",
-      data: data,
+      data: {
+        ...data.toObject(),
+        showAmount, 
+      },
     });
+
   } catch (error) {
     console.error("Error fetching AMC data:", error);
     return res.status(500).json({
@@ -467,6 +477,7 @@ exports.amcDataById = async (req, res) => {
     });
   }
 };
+
 
 exports.getAllAmcList = async (req, res) => {
   const { page = 1, limit = 10, search = "", id, status } = req.query;
