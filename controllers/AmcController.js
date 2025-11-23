@@ -56,6 +56,9 @@ exports.AmcFormData = async (req, res) => {
   }
 };
 
+
+
+
 exports.editAmc = async (req, res) => {
   try {
     const { id } = req.params;
@@ -101,6 +104,47 @@ exports.editAmc = async (req, res) => {
     res.status(500).json({ message: "Something went wrong", error: err });
   }
 };
+
+exports.addRefundAndExpense = async (req, res) => {
+  try {
+    const { id } = req.params; 
+    const { expenses, buybackOrSoldToRG, refundedAmount } = req.body;
+
+    const AMCdata = await AMCs.findOne({
+      "vehicleDetails.vinNumber": id,
+    });
+
+    if (!AMCdata) {
+      return res.status(404).json({
+        message: "AMC not found for this VIN number.",
+      });
+    }
+
+    AMCdata.amcAssuredAdditionalDatax = {
+      expenses,
+      buybackOrSoldToRG,
+      refundedAmount,
+      submittedAt: new Date(),
+    };
+
+    await AMCdata.save();
+
+    return res.status(200).json({
+      message: "Details added successfully",
+      data: AMCdata,
+      status: 200,
+    });
+
+  } catch (error) {
+    console.error("Error adding details:", error);
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+
 
 exports.AmcSalesFormData = async (req, res) => {
   try {
@@ -704,6 +748,71 @@ exports.getamcStats = async (req, res) => {
       .json({ success: false, message: "Internal Server Error" });
   }
 };
+
+exports.getamcAssuredStats = async (req, res) => {
+  try {
+    const { location, vehicleModel, startDate, endDate } = req.query;
+
+    let filter = {
+      amcStatus: "approved",
+      isDisabled: false,
+      "customerDetails.amcType": "AMC Assured"
+    };
+
+    if (location) {
+      filter["vehicleDetails.dealerLocation"] = location;
+    }
+    if (vehicleModel) {
+      filter["vehicleDetails.model"] = vehicleModel;
+    }
+    if (startDate || endDate) {
+      if (startDate && endDate) {
+        filter["createdAt"] = {
+          $gte: new Date(`${startDate}T00:00:00.000Z`),
+          $lte: new Date(`${endDate}T23:59:59.999Z`),
+        };
+      } else if (startDate) {
+        filter["createdAt"] = {
+          $gte: new Date(`${startDate}T00:00:00.000Z`),
+          $lte: new Date(`${startDate}T23:59:59.999Z`),
+        };
+      } else if (endDate) {
+        filter["createdAt"] = {
+          $gte: new Date(`${endDate}T00:00:00.000Z`),
+          $lte: new Date(`${endDate}T23:59:59.999Z`),
+        };
+      }
+    }
+
+    const amcDocs = await AMCs.find(filter);
+    const totalamcCount = amcDocs.length;
+
+    const totalRevenue = amcDocs.reduce((sum, doc) =>
+      sum + Number(doc?.vehicleDetails?.total || 0), 0
+    );
+
+    const totalExpense = amcDocs.reduce((sum, doc) =>
+      sum + (doc?.amcExpense?.reduce((acc, item) =>
+        acc + Number(item?.serviceTotalAmount || 0), 0
+      ) || 0),
+      0
+    );
+
+    return res.status(200).json({
+      success: true,
+      totalamcAssured: formatNumber(totalamcCount),
+      totalAmcAssuredRevenue: formatNumber(totalRevenue),
+      totalAmcAssuredExpense: formatNumber(totalExpense),
+    });
+
+  } catch (error) {
+    console.error("Error fetching AMC Assured stats:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
+  }
+};
+
 
 
 exports.downloadAmcCsv = async (req, res) => {

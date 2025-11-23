@@ -153,11 +153,22 @@ const extendedPolicySchema = mongoose.Schema({
   submittedAt: Date,
 });
 
+
+const amcAssuredSchema = mongoose.Schema({
+  expenses: String,
+  buybackOrSoldToRG: String,
+  refundedAmount: String,
+  submittedAt: Date,
+});
+
+
+
 const AMCschema = mongoose.Schema(
   {
     customerDetails: customerPersonalDetais,
     vehicleDetails: amcVehicleDetailSchema,
     extendedPolicy: extendedPolicySchema,
+    amcAssuredAdditionalData : amcAssuredSchema,
     amcExpense: [uploadDataSchema],
     amcCredit:{
       type:String,
@@ -167,6 +178,7 @@ const AMCschema = mongoose.Schema(
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
+
     customId: {
       type: String,
       required: true,
