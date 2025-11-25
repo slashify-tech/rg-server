@@ -52,10 +52,33 @@ const renderEmailTemplate = async (data, pathData, typeData) => {
 
     }
     
-  
+   let totalPrice;
+    let sgstAmount;
+    let cgstAmount;
+
+    if (data.extendedPolicy?.additionalPrice) {
+      // CASE 1: Extended policy
+      totalPrice = Number(data.extendedPolicy.additionalPrice);
+
+      sgstAmount = totalPrice * 0.09; // 9%
+      cgstAmount = totalPrice * 0.09; // 9%
+
+    } else {
+      // CASE 2: AMC normal GST
+      totalPrice = Number(data.vehicleDetails?.gstAmount || 0);
+
+      sgstAmount = Number(data.vehicleDetails?.sgst || 0);
+      cgstAmount = Number(data.vehicleDetails?.cgst || 0);
+    }
+
+    const afterGstAmount = totalPrice + sgstAmount + cgstAmount;
 
     return ejs.render(template, {
       data: data,
+      totalPrice,
+      sgstAmount,
+      cgstAmount,
+      afterGstAmount,
       date: formatIsoDate(data?.createdAt),
       titleData: typeData === "ewpolicy" ?    "360 CAR PROTECT INDIA LLP": "RAAM4WHEELERS LLP",
       addressData: typeData === "ewpolicy" ? "3-4-138, 138/A Flat No.501, Royal Elegance, Himayathnagar, Barkatpura, Hyderabad, Hyderabad,Telangana, 500027, Ph: 7799935258, Email Id: ew@360carprotect.in GSTIN: 36AADFZ5034G1Z5, PAN: AADFZ5034G"
