@@ -137,12 +137,12 @@ const uploadDataSchema = mongoose.Schema({
   vasPrice: {
     type: String,
   },
-  issueType:{
-    trype:String,
+  serviceType:{
+    type:String,
   },
-  serviceTotalAmount: {
-    type: String,
-  }
+    serviceTotalAmount: {
+      type: String,
+    }
 
 });
 const extendedPolicySchema = mongoose.Schema({

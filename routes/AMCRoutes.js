@@ -19,8 +19,8 @@ const { authCheck } = require("../middleware/Auth");
 const router = express.Router();
 
 router.post("/add-new-sales-service-amc",AmcSalesFormData);
-router.post("/add-expense-amc",authCheck, addExpenseData);
 router.post("/add-new-amc",authCheck, AmcFormData);
+router.post("/add-expense-amc",authCheck, addExpenseData);
 
 router.patch("/extend-amc/:id",authCheck, createExtendedPolicy);
 router.patch("/extend-amc-form/:id", createExtendedPolicy);

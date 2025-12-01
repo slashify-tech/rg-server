@@ -1,4 +1,3 @@
-
 const { AgentPolicyRejectedEmail } = require("../helper/emailFunction");
 const { AMCs } = require("../model/AmcModel");
 const Invoice = require("../model/InvoiceModel");
@@ -32,7 +31,6 @@ exports.AmcFormData = async (req, res) => {
     const customId = `Raam-AMC-${currentYear}-${last5DigitsOfVin}`;
     const amcCredit = Number(amcData.vehicleDetails?.agreementPeriod) || 0;
 
-
     const newAmc = new AMCs({
       ...amcData,
       amcCredit,
@@ -55,9 +53,6 @@ exports.AmcFormData = async (req, res) => {
     });
   }
 };
-
-
-
 
 exports.editAmc = async (req, res) => {
   try {
@@ -107,7 +102,7 @@ exports.editAmc = async (req, res) => {
 
 exports.addRefundAndExpense = async (req, res) => {
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
     const { expenses, buybackOrSoldToRG, refundedAmount } = req.body;
 
     const AMCdata = await AMCs.findOne({
@@ -120,7 +115,7 @@ exports.addRefundAndExpense = async (req, res) => {
       });
     }
 
-    AMCdata.amcAssuredAdditionalDatax = {
+    AMCdata.amcAssuredAdditionalData = {
       expenses,
       buybackOrSoldToRG,
       refundedAmount,
@@ -134,7 +129,6 @@ exports.addRefundAndExpense = async (req, res) => {
       data: AMCdata,
       status: 200,
     });
-
   } catch (error) {
     console.error("Error adding details:", error);
     return res.status(500).json({
@@ -143,8 +137,6 @@ exports.addRefundAndExpense = async (req, res) => {
     });
   }
 };
-
-
 
 exports.AmcSalesFormData = async (req, res) => {
   try {
@@ -170,12 +162,11 @@ exports.AmcSalesFormData = async (req, res) => {
     const customId = `Raam-AMC-${currentYear}-${last5DigitsOfVin}`;
     const amcCredit = Number(amcData.vehicleDetails?.agreementPeriod) || 0;
 
-
     const newAmc = new AMCs({
       ...amcData,
       amcCredit,
       customId,
-      isAmcSalesOrService: true, 
+      isAmcSalesOrService: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -195,13 +186,11 @@ exports.AmcSalesFormData = async (req, res) => {
   }
 };
 
-
-
-
 exports.createExtendedPolicy = async (req, res) => {
   const { id } = req.params; // this is vinNumber
-  
-  const { extendedPolicyPeriod, additionalPrice, paymentCopyProof, openForm } = req.body;
+
+  const { extendedPolicyPeriod, additionalPrice, paymentCopyProof, openForm } =
+    req.body;
 
   try {
     if (!extendedPolicyPeriod || !additionalPrice || !paymentCopyProof) {
@@ -211,7 +200,7 @@ exports.createExtendedPolicy = async (req, res) => {
     }
 
     // Find the AMC document by vinNumber
-  const AMCdata = await AMCs.findOne({
+    const AMCdata = await AMCs.findOne({
       "vehicleDetails.vinNumber": id,
     });
 
@@ -227,9 +216,8 @@ exports.createExtendedPolicy = async (req, res) => {
       paymentCopyProof,
       openForm,
       submittedAt: new Date(),
-     
     };
-      AMCdata.amcStatus = "pending";
+    AMCdata.amcStatus = "pending";
 
     await AMCdata.save();
 
@@ -237,7 +225,6 @@ exports.createExtendedPolicy = async (req, res) => {
       message: "Extended policy updated successfully",
       data: AMCdata,
     });
-
   } catch (error) {
     console.error("Error creating extended policy:", error);
     res.status(500).json({
@@ -246,8 +233,6 @@ exports.createExtendedPolicy = async (req, res) => {
     });
   }
 };
-
-
 
 exports.updateAMCStatus = async (req, res) => {
   try {
@@ -311,30 +296,29 @@ exports.updateAMCStatus = async (req, res) => {
           .json({ message: "Rejection reason is required." });
       }
       if (
-  AMCdata.isAmcSalesOrService === true ||
-  AMCdata.extendedPolicy?.openForm === true
-) {
-  await AgentPolicyRejectedEmail(
-    AMCdata.vehicleDetails.salesTeamEmail,
-    "User",
-    reason,
-    "AMC(Annual Maintenance Contract)",
-    AMCdata.vehicleDetails.vinNumber,
-    AMCdata.customId,
-    "AMC",
-    "Raam4Wheelers LLP"
-  );
+        AMCdata.isAmcSalesOrService === true ||
+        AMCdata.extendedPolicy?.openForm === true
+      ) {
+        await AgentPolicyRejectedEmail(
+          AMCdata.vehicleDetails.salesTeamEmail,
+          "User",
+          reason,
+          "AMC(Annual Maintenance Contract)",
+          AMCdata.vehicleDetails.vinNumber,
+          AMCdata.customId,
+          "AMC",
+          "Raam4Wheelers LLP"
+        );
 
-  // await AMCs.findByIdAndDelete(id);
+        // await AMCs.findByIdAndDelete(id);
 
-  // console.log(`AMCdata with ID: ${id} deleted immediately`);
-  
-  return res.status(200).json({
-    message: "AMC rejected & deleted",
-    status: 200,
-  });
+        // console.log(`AMCdata with ID: ${id} deleted immediately`);
 
-}
+        return res.status(200).json({
+          message: "AMC rejected & deleted",
+          status: 200,
+        });
+      }
 
       const deletionDate = new Date();
       deletionDate.setDate(deletionDate.getDate() + 3);
@@ -457,18 +441,15 @@ exports.amcDataById = async (req, res) => {
 
     // Determine which amount to show
     const showAmount =
-      data.extendedPolicy?.additionalPrice ||
-      data.vehicleDetails?.total ||
-      0;
+      data.extendedPolicy?.additionalPrice || data.vehicleDetails?.total || 0;
 
     return res.status(200).json({
       message: "Data fetched successfully",
       data: {
         ...data.toObject(),
-        showAmount, 
+        showAmount,
       },
     });
-
   } catch (error) {
     console.error("Error fetching AMC data:", error);
     return res.status(500).json({
@@ -478,10 +459,9 @@ exports.amcDataById = async (req, res) => {
   }
 };
 
-
 exports.getAllAmcList = async (req, res) => {
   const { page = 1, limit = 10, search = "", id, status } = req.query;
-   const {roleType, location} = req.user
+  const { roleType, location } = req.user;
   try {
     // Construct query
     const query = {};
@@ -513,7 +493,7 @@ exports.getAllAmcList = async (req, res) => {
     if (roleType === "1" && location) {
       query["vehicleDetails.dealerLocation"] = location;
     }
-    
+
     // Pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
@@ -556,7 +536,7 @@ exports.AMCResubmit = async (req, res) => {
     }
     AMCData.amcStatus = "pending";
     await AMCData.save();
-
+    MZ7BD1D3J4H068951;
     return res
       .status(200)
       .json({ message: "AMC fetched successfully", AMCData });
@@ -568,7 +548,7 @@ exports.AMCResubmit = async (req, res) => {
 
 exports.addExpenseData = async (req, res) => {
   try {
-    const { serviceData } = req.body;
+    const serviceData = req.body;
 
     if (!Array.isArray(serviceData) || serviceData.length === 0) {
       return res.status(400).json({
@@ -586,81 +566,63 @@ exports.addExpenseData = async (req, res) => {
     if (amcRecords.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "AMC records not found for the provided VIN numbers.",
+        message: "AMC records not found for provided VINs.",
       });
     }
 
     const serviceDataMap = new Map(
-      serviceData.map((entry) => [
-        entry.serviceVinNumber,
-        entry.expenses.map((expense) => ({
-          ...expense,
-          serviceTotalAmount:
-            (parseFloat(expense.partsPrice) || 0) +
-            (parseFloat(expense.labourPrice) || 0) +
-            (parseFloat(expense.vasPrice) || 0),
-        })),
-      ])
+      serviceData.map((entry) => [entry.serviceVinNumber, entry.expenses])
     );
 
-    const updates = amcRecords.map((amcRecord) => {
-      const vinNumber = amcRecord.vehicleDetails.vinNumber;
-      const expenses = serviceDataMap.get(vinNumber) || [];
+    const updates = amcRecords
+      .map((amcRecord) => {
+        const vinNumber = amcRecord.vehicleDetails.vinNumber;
+        const expenses = serviceDataMap.get(vinNumber) || [];
 
-      let existingServiceDates = new Set(
-        amcRecord.amcExpense.map((expense) => expense.serviceDate)
-      );
+        const existingDates = new Set(
+          amcRecord?.amcExpense?.map((e) => e.serviceDate)
+        );
 
-      let newServices = [];
-      let existingServices = [];
+        const newServices = expenses.filter(
+          (e) => !existingDates.has(e.serviceDate)
+        );
+        const repeatedServices = expenses.filter((e) =>
+          existingDates.has(e.serviceDate)
+        );
 
-      expenses.forEach((service) => {
-        if (existingServiceDates.has(service.serviceDate)) {
-          existingServices.push(service);
-        } else {
-          newServices.push(service);
+        if (newServices.length === 0 && repeatedServices.length === 0)
+          return null;
+
+        const updateFields = {};
+
+        // Deduct AMC credit only for new services
+        if (newServices.length > 0) {
+          updateFields.$push = { amcExpense: { $each: newServices } };
+          updateFields.$set = {
+            amcCredit: Math.max(
+              (Number(amcRecord.amcCredit) || 0) - newServices.length,
+              0
+            ),
+          };
         }
-      });
 
-      if (newServices.length === 0 && existingServices.length === 0) return null;
+        // Save repeated services (no AMC deduction)
+        if (repeatedServices.length > 0) {
+          updateFields.$push = updateFields.$push || {};
+          updateFields.$push.amcExpense = updateFields.$push.amcExpense || {
+            $each: [],
+          };
+          updateFields.$push.amcExpense.$each.push(...repeatedServices);
+        }
 
-      let updateFields = {};
-      if (newServices.length > 0) {
-        const existingServiceDates = new Set(
-          amcRecord.amcExpense.map((expense) => expense.serviceDate) // Get saved service dates from DB
-        );
-      
-        // Find only the truly new unique dates (not in DB)
-        const uniqueNewDates = new Set(
-          newServices
-            .map((service) => service.serviceDate)
-            .filter((date) => !existingServiceDates.has(date)) // Exclude already saved dates
-        );
-      
-        const dateCountToSubtract = uniqueNewDates.size; // Only count new unique dates
-      
-        const currentAgreementPeriod = Number(amcRecord.amcCredit) || 0;
-        const updatedAgreementPeriod = Math.max(currentAgreementPeriod - dateCountToSubtract, 0);
-      
-        updateFields.$set = { amcCredit: String(updatedAgreementPeriod) };
-        updateFields.$push = { amcExpense: { $each: newServices } };
-      }
-      
-
-     if (existingServices.length > 0) {
-        updateFields.$push = updateFields.$push || {};
-        updateFields.$push.amcExpense = updateFields.$push.amcExpense || { $each: [] };
-        updateFields.$push.amcExpense.$each.push(...existingServices);
-      }
-
-
-      return {
-        updateOne: {
-          filter: { _id: amcRecord._id },
-          update: updateFields,
-        },
-      };
-    }).filter(Boolean);
+        return {
+          updateOne: {
+            filter: { _id: amcRecord._id },
+            update: updateFields,
+          },
+        };
+      })
+      .filter(Boolean);
 
     if (updates.length === 0) {
       return res.status(400).json({
@@ -673,7 +635,7 @@ exports.addExpenseData = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Service expenses added. AMC credit updated only for new entries.",
+      message: "Service expenses added successfully.",
     });
   } catch (error) {
     console.error("Error adding service expenses:", error);
@@ -688,58 +650,81 @@ exports.getamcStats = async (req, res) => {
   try {
     const { location, vehicleModel, startDate, endDate } = req.query;
 
-    let filter = {amcStatus: "approved", isDisabled: false };
-    if (location) {
-      filter["vehicleDetails.dealerLocation"] = location;
-    }
-    if (vehicleModel) {
-      filter["vehicleDetails.model"] = vehicleModel;
-    }
-    if (startDate || endDate) {
-      if (startDate && endDate) {
-        // If both startDate and endDate are provided, filter between them
-        filter["createdAt"] = {
-          $gte: new Date(`${startDate}T00:00:00.000Z`),
-          $lte: new Date(`${endDate}T23:59:59.999Z`),
-        };
-      } else if (startDate) {
-        // If only startDate is provided, match only that date
-        filter["createdAt"] = {
-          $gte: new Date(`${startDate}T00:00:00.000Z`),
-          $lte: new Date(`${startDate}T23:59:59.999Z`),
-        };
-      } else if (endDate) {
-        // If only endDate is provided, match only that date
-        filter["createdAt"] = {
-          $gte: new Date(`${endDate}T00:00:00.000Z`),
-          $lte: new Date(`${endDate}T23:59:59.999Z`),
-        };
-      }
-    }
-    
-    const amcDocs = await AMCs.find(filter);
-    const totalamcCount = amcDocs.length;
-    const totalRevenue = amcDocs.reduce((sum, doc) => {
-      return sum + Number(doc.vehicleDetails?.total || 0);
-    }, 0);
+    let filter = { amcStatus: "approved", isDisabled: false };
 
-    const totalExpense = amcDocs.reduce((sum, doc) => {
-      return (
+    if (location) filter["vehicleDetails.dealerLocation"] = location;
+    if (vehicleModel) filter["vehicleDetails.model"] = vehicleModel;
+
+    if (startDate || endDate) {
+      filter["createdAt"] = {
+        ...(startDate && { $gte: new Date(`${startDate}T00:00:00.000Z`) }),
+        ...(endDate && { $lte: new Date(`${endDate}T23:59:59.999Z`) }),
+      };
+    }
+
+    const amcDocs = await AMCs.find(filter);
+
+    const totalamcCount = amcDocs.length;
+
+    const totalRevenue = amcDocs.reduce(
+      (sum, doc) => sum + Number(doc.vehicleDetails?.total || 0),
+      0
+    );
+
+    const totalExpense = amcDocs.reduce(
+      (sum, doc) =>
         sum +
-        (doc.amcExpense?.reduce((acc, item) => acc + Number(item.serviceTotalAmount || 0), 0) || 0)
-      );
-    }, 0);
-    
+        (doc.amcExpense?.reduce(
+          (acc, item) => acc + Number(item.serviceTotalAmount || 0),
+          0
+        ) || 0),
+      0
+    );
 
     let totalPartsPrice = 0;
     let totalLabourPrice = 0;
     let totalVasPrice = 0;
 
+    const serviceTypeCount = {};
+
+    // Track PMS per VIN
+    const pmsTracker = {};
+
     amcDocs.forEach((doc) => {
+      const vin = doc.vehicleDetails?.vinNumber;
+
       doc.amcExpense?.forEach((item) => {
         totalPartsPrice += Number(item.partsPrice || 0);
         totalLabourPrice += Number(item.labourPrice || 0);
         totalVasPrice += Number(item.vasPrice || 0);
+
+        if (!item.serviceType) return;
+
+        let key = item.serviceType.trim();
+
+        const isPMS = key.toLowerCase().includes("pms");
+
+        // -------- PMS Logic (Limit to 7) ----------
+        if (isPMS) {
+          pmsTracker[vin] = (pmsTracker[vin] || 0) + 1;
+
+          const count = pmsTracker[vin];
+
+          if (count > 7) {
+            return; // IGNORE PMS beyond 7th
+          }
+
+          const suffix =
+            count === 1 ? "1st" :
+            count === 2 ? "2nd" :
+            count === 3 ? "3rd" :
+            `${count}th`;
+
+          key = `${suffix} Preventive Maintenance Service(PMS)`;
+        }
+
+        // Normal Count logic
+        serviceTypeCount[key] = (serviceTypeCount[key] || 0) + 1;
       });
     });
 
@@ -748,15 +733,18 @@ exports.getamcStats = async (req, res) => {
       totalamcCount: formatNumber(totalamcCount),
       totalRevenue: formatNumber(totalRevenue),
       totalExpense: formatNumber(totalExpense),
-      totalPartsPrice: formatNumber(totalPartsPrice), 
-      totalLabourPrice: formatNumber(totalLabourPrice), 
-      totalVasPrice: formatNumber(totalVasPrice), 
+      totalPartsPrice: formatNumber(totalPartsPrice),
+      totalLabourPrice: formatNumber(totalLabourPrice),
+      totalVasPrice: formatNumber(totalVasPrice),
+      serviceTypeCount,
     });
+
   } catch (error) {
-    console.error("Error fetching amc stats:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal Server Error" });
+    console.error("Error fetching AMC stats:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
   }
 };
 
@@ -767,7 +755,7 @@ exports.getamcAssuredStats = async (req, res) => {
     let filter = {
       amcStatus: "approved",
       isDisabled: false,
-      "customerDetails.amcType": "AMC Assured"
+      "customerDetails.amcType": "AMC Assured",
     };
 
     if (location) {
@@ -798,14 +786,18 @@ exports.getamcAssuredStats = async (req, res) => {
     const amcDocs = await AMCs.find(filter);
     const totalamcCount = amcDocs.length;
 
-    const totalRevenue = amcDocs.reduce((sum, doc) =>
-      sum + Number(doc?.vehicleDetails?.total || 0), 0
+    const totalRevenue = amcDocs.reduce(
+      (sum, doc) => sum + Number(doc?.vehicleDetails?.total || 0),
+      0
     );
 
-    const totalExpense = amcDocs.reduce((sum, doc) =>
-      sum + (doc?.amcExpense?.reduce((acc, item) =>
-        acc + Number(item?.serviceTotalAmount || 0), 0
-      ) || 0),
+    const totalExpense = amcDocs.reduce(
+      (sum, doc) =>
+        sum +
+        (doc?.amcExpense?.reduce(
+          (acc, item) => acc + Number(item?.serviceTotalAmount || 0),
+          0
+        ) || 0),
       0
     );
 
@@ -815,7 +807,6 @@ exports.getamcAssuredStats = async (req, res) => {
       totalAmcAssuredRevenue: formatNumber(totalRevenue),
       totalAmcAssuredExpense: formatNumber(totalExpense),
     });
-
   } catch (error) {
     console.error("Error fetching AMC Assured stats:", error);
     return res
@@ -823,8 +814,6 @@ exports.getamcAssuredStats = async (req, res) => {
       .json({ success: false, message: "Internal Server Error" });
   }
 };
-
-
 
 exports.downloadAmcCsv = async (req, res) => {
   try {
@@ -834,33 +823,57 @@ exports.downloadAmcCsv = async (req, res) => {
 
     const data = await AMCs.find(query);
 
-    const csvData = data.map((policy) => ({
-      "Customer Name": policy.customerDetails.customerName || "",
-      Email: policy.customerDetails.email || "",
-      "Pan Number": policy.customerDetails.pan || "",
-      Address: policy.customerDetails.address || "",
-      "Contact Number": policy.customerDetails.contact || "",
-      "Gst Number": policy.customerDetails.customerGst || "",
-      "Vehicle Model": policy.vehicleDetails.model || "",
-      "Vin Number": policy.vehicleDetails.vinNumber || "",
-      "Fuel Type": policy.vehicleDetails.fuelType || "",
-      "Agreement Period": policy.vehicleDetails.agreementPeriod || "",
-      "Agreement Start Date": policy.vehicleDetails.agreementStartDate || "",
-      "Agreement Valid Date": policy.vehicleDetails.agreementValidDate || "",
-      "Agreement Start Milage":
-        policy.vehicleDetails.agreementStartMilage || "",
-      "Agreement Valid Milage":
-        policy.vehicleDetails.agreementValidMilage || "",
-      "Maximum Valid PMS": policy.vehicleDetails.MaximumValidPMS || "",
-      "Dealer Location": policy.vehicleDetails.dealerLocation || "",
-      "Total Price": policy.vehicleDetails.total || "",
-      "Regional Manager Name": policy.vehicleDetails.rmName || "",
-      "RM Employee Id": policy.vehicleDetails.rmEmployeeId || "",
-      "RM Email": policy.vehicleDetails.rmEmail || "",
-      "GM Email": policy.vehicleDetails.gmEmail || "",
+    const csvData = data.map((policy) => {
+      const totals = policy?.amcExpense?.reduce(
+        (acc, item) => {
+          acc.parts += Number(item?.partsPrice || 0);
+          acc.vas += Number(item?.vasPrice || 0);
+          acc.labour += Number(item?.labourPrice || 0);
+          return acc;
+        },
+        { parts: 0, vas: 0, labour: 0 }
+      );
+       let availableCredit = "";
 
-      "Current Status": policy.amcStatus || "",
-    }));
+  if (Array.isArray(policy.vehicleDetails.custUpcomingService)) {
+    availableCredit = policy.vehicleDetails.custUpcomingService.at(-1) || "";
+  } else {
+    availableCredit = policy.vehicleDetails.custUpcomingService || "";
+  }
+
+
+      return {
+        "Customer Name": policy.customerDetails.customerName || "",
+        Email: policy.customerDetails.email || "",
+        "Pan Number": policy.customerDetails.pan || "",
+        Address: policy.customerDetails.address || "",
+        "Contact Number": policy.customerDetails.contact || "",
+        "Gst Number": policy.customerDetails.customerGst || "",
+        "Vehicle Model": policy.vehicleDetails.model || "",
+        "Vin Number": policy.vehicleDetails.vinNumber || "",
+        "Fuel Type": policy.vehicleDetails.fuelType || "",
+        "Agreement Period": policy.vehicleDetails.agreementPeriod || "",
+        "Agreement Start Date": policy.vehicleDetails.agreementStartDate || "",
+        "Agreement Valid Date": policy.vehicleDetails.agreementValidDate || "",
+        "Agreement Start Milage":
+          policy.vehicleDetails.agreementStartMilage || "",
+        "Agreement Valid Milage":
+          policy.vehicleDetails.agreementValidMilage || "",
+        "Maximum Valid PMS": policy.vehicleDetails.MaximumValidPMS || "",
+        "Dealer Location": policy.vehicleDetails.dealerLocation || "",
+        "Total Price": policy.vehicleDetails.total || "",
+        "Regional Manager Name": policy.vehicleDetails.rmName || "",
+        "RM Employee Id": policy.vehicleDetails.rmEmployeeId || "",
+        "RM Email": policy.vehicleDetails.rmEmail || "",
+        "GM Email": policy.vehicleDetails.gmEmail || "",
+
+        "Current Status": policy.amcStatus || "",
+        "Available Credit": availableCredit,
+        "Parts Price": totals.parts || "",
+        "Vas Price": totals.vas || "",
+        "Labour Price": totals.labour || "",
+      };
+    });
 
     const csvDataString = json2csv(csvData, {
       fields: [
@@ -886,6 +899,10 @@ exports.downloadAmcCsv = async (req, res) => {
         "RM Email",
         "GM Email",
         "Current Status",
+        "Available Credit",
+        "Parts Price",
+        "Vas Price",
+        "Labour Price",
       ],
     });
 
