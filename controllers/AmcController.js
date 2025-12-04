@@ -6,6 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const { parse: json2csv } = require("json2csv");
 const { formatNumber } = require("../helper/countreunvtion");
+const mongoose = require("mongoose");
 
 exports.AmcFormData = async (req, res) => {
   try {
@@ -419,27 +420,42 @@ exports.disableAmc = async (req, res) => {
 
 exports.amcDataById = async (req, res) => {
   const { id, status } = req.query;
+
   try {
     if (!id && !status) {
       return res.status(400).json({
-        message: "Please provide either AMCID or status",
+        message: "Please provide either AMCID, VIN Number, or status",
       });
     }
 
-    // Build query
-    const query = {};
-    if (id) query._id = id;
-    if (status) query.status = status;
+    let data = null;
 
-    const data = await AMCs.findOne(query);
+    if (id) {
+      // Check if `id` is a valid ObjectId
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        data = await AMCs.findOne({ _id: id, ...(status && { status }) });
+      }
+
+      // If not found by _id OR not a valid ObjectId → search by VIN
+      if (!data) {
+        data = await AMCs.findOne({
+          "vehicleDetails.vinNumber": id,
+          ...(status && { status }),
+        });
+      }
+    }
+
+    // If only status is provided (no ID)
+    if (!id && status) {
+      data = await AMCs.findOne({ status });
+    }
 
     if (!data) {
       return res.status(404).json({
-        message: "No data found with the provided criteria",
+        message: "No matching AMC or VIN number found",
       });
     }
 
-    // Determine which amount to show
     const showAmount =
       data.extendedPolicy?.additionalPrice || data.vehicleDetails?.total || 0;
 

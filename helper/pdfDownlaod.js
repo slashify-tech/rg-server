@@ -72,7 +72,7 @@ const renderEmailTemplate = async (data, pathData, typeData) => {
     }
 
     const afterGstAmount = totalPrice + sgstAmount + cgstAmount;
-
+      
     return ejs.render(template, {
       data: data,
       totalPrice,

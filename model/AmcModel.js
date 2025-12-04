@@ -33,18 +33,18 @@ const customerPersonalDetais = mongoose.Schema({
     type: String,
     required: false,
   },
-  city:{
-    type:String
+  city: {
+    type: String,
   },
-  state:{
-    type:String
+  state: {
+    type: String,
   },
-  dob:{
-    type:String
+  dob: {
+    type: String,
   },
-  amcType:{
-    type:String
-  }
+  amcType: {
+    type: String,
+  },
 });
 
 const amcVehicleDetailSchema = mongoose.Schema({
@@ -96,28 +96,26 @@ const amcVehicleDetailSchema = mongoose.Schema({
     type: String,
   },
   department: {
-  type: String,
-},
+    type: String,
+  },
   salesTeamEmail: {
-  type: String,
-},
-paymentReceivedDateForPackage: {
-  type: String,
-},
+    type: String,
+  },
+  paymentReceivedDateForPackage: {
+    type: String,
+  },
 
-bookingId: {
-  type: String,
-},
+  bookingId: {
+    type: String,
+  },
 
-custUpcomingService: {
-  type: Array,
-},
+  custUpcomingService: {
+    type: Array,
+  },
 
-paymentScreenshot: {
-  type: String,
-},
-
-  
+  paymentScreenshot: {
+    type: String,
+  },
 });
 
 const uploadDataSchema = mongoose.Schema({
@@ -126,7 +124,7 @@ const uploadDataSchema = mongoose.Schema({
   },
   serviceDate: {
     type: String,
-    required: true
+    required: true,
   },
   partsPrice: {
     type: String,
@@ -137,13 +135,12 @@ const uploadDataSchema = mongoose.Schema({
   vasPrice: {
     type: String,
   },
-  serviceType:{
-    type:String,
+  serviceType: {
+    type: String,
   },
-    serviceTotalAmount: {
-      type: String,
-    }
-
+  serviceTotalAmount: {
+    type: String,
+  },
 });
 const extendedPolicySchema = mongoose.Schema({
   extendedPolicyPeriod: String,
@@ -151,8 +148,10 @@ const extendedPolicySchema = mongoose.Schema({
   paymentCopyProof: String,
   openForm: Boolean,
   submittedAt: Date,
+  validDate: String,
+  validMileage: String,
+  upcomingPackage: Array,
 });
-
 
 const amcAssuredSchema = mongoose.Schema({
   expenses: String,
@@ -161,17 +160,15 @@ const amcAssuredSchema = mongoose.Schema({
   submittedAt: Date,
 });
 
-
-
 const AMCschema = mongoose.Schema(
   {
     customerDetails: customerPersonalDetais,
     vehicleDetails: amcVehicleDetailSchema,
     extendedPolicy: extendedPolicySchema,
-    amcAssuredAdditionalData : amcAssuredSchema,
+    amcAssuredAdditionalData: amcAssuredSchema,
     amcExpense: [uploadDataSchema],
-    amcCredit:{
-      type:String,
+    amcCredit: {
+      type: String,
     },
     amcStatus: {
       type: String,
@@ -183,11 +180,10 @@ const AMCschema = mongoose.Schema(
       type: String,
       required: true,
     },
-  
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      
     },
     isCancelReq: {
       type: String,
@@ -195,12 +191,10 @@ const AMCschema = mongoose.Schema(
       default: "noReq",
     },
 
-
-   isAmcSalesOrService: {
+    isAmcSalesOrService: {
       type: Boolean,
-       default: false
+      default: false,
     },
-
 
     approvedAt: {
       type: Date,

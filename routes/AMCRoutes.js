@@ -30,7 +30,7 @@ router.patch("/amc-resubmit",authCheck, AMCResubmit);
 router.patch("/edit-amc/:id",authCheck, editAmc);
 router.patch("/disable-amc",authCheck, disableAmc);
 
-router.get("/amcById",authCheck, amcDataById);
+router.get("/amcById", amcDataById);
 router.get("/amc-lists",authCheck, getAllAmcList);
 router.get("/amc-stats-data",authCheck, getamcStats);
 router.get("/amc-assured-stats",authCheck, getamcAssuredStats);
