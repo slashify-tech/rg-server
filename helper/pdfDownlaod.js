@@ -100,23 +100,23 @@ const generatePdf = async (html, pdfType) => {
   let browser;
   try {
     // Launch Puppeteer with error-resilient options
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--disable-gpu",
-      ],
-      timeout: 180000, // Increased timeout
-    });
-
-    //  browser = await puppeteer.launch({  //production code for aws ec2 
-    //   executablePath: '/usr/bin/chromium-browser', // Path to system-installed Chromium
+    // browser = await puppeteer.launch({
     //   headless: true,
-    //   args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    //   args: [
+    //     "--no-sandbox",
+    //     "--disable-setuid-sandbox",
+    //     "--disable-dev-shm-usage",
+    //     "--disable-accelerated-2d-canvas",
+    //     "--disable-gpu",
+    //   ],
+    //   timeout: 180000, // Increased timeout
     // });
+
+     browser = await puppeteer.launch({  //production code for aws ec2 
+      executablePath: '/usr/bin/chromium-browser', // Path to system-installed Chromium
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
     
 
     const page = await browser.newPage();
