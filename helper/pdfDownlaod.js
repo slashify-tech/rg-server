@@ -1,5 +1,4 @@
 
-
 const ejs = require('ejs');
 const path = require('path');
 const puppeteer = require('puppeteer')
@@ -53,13 +52,36 @@ const renderEmailTemplate = async (data, pathData, typeData) => {
 
     }
     
-  
+   let totalPrice;
+    let sgstAmount;
+    let cgstAmount;
 
+    if (data.extendedPolicy?.additionalPrice) {
+      // CASE 1: Extended policy
+      totalPrice = Number(data.extendedPolicy.additionalPrice);
+
+      sgstAmount = totalPrice * 0.09; // 9%
+      cgstAmount = totalPrice * 0.09; // 9%
+
+    } else {
+      // CASE 2: AMC normal GST
+      totalPrice = Number(data.vehicleDetails?.gstAmount || 0);
+
+      sgstAmount = Number(data.vehicleDetails?.sgst || 0);
+      cgstAmount = Number(data.vehicleDetails?.cgst || 0);
+    }
+
+    const afterGstAmount = totalPrice + sgstAmount + cgstAmount;
+      
     return ejs.render(template, {
       data: data,
+      totalPrice,
+      sgstAmount,
+      cgstAmount,
+      afterGstAmount,
       date: formatIsoDate(data?.createdAt),
-      titleData: typeData === "ewpolicy" ?    "360 CAR PROTECT INDIA LLP": "RAAM4WHEELERS LLP",
-      addressData: typeData === "ewpolicy" ? "3-4-138, 138/A Flat No.501, Royal Elegance, Himayathnagar, Barkatpura, Hyderabad, Hyderabad,Telangana, 500027, Ph: 7799935258, Email Id: ew@360carprotect.in GSTIN: 36AADFZ5034G1Z5, PAN: AADFZ5034G"
+      titleData: typeData === "ewpolicy" ?    "360 CAR PROTECT INDIA LLP": "RAAM4WHEELERS LLP",
+      addressData: typeData === "ewpolicy" ? "3-4-138, 138/A Flat No.501, Royal Elegance, Himayathnagar, Barkatpura, Hyderabad, Hyderabad,Telangana, 500027, Ph: 7799935258, Email Id: ew@360carprotect.in GSTIN: 36AADFZ5034G1Z5, PAN: AADFZ5034G"
       : "8-2-120/86/10,10A,11B,11C and 11D, Opp: Hotel Park Hyatt,   Road Number 2, Banjara Hills Hyderabad, PIN-500033, Ph: 7799935258, Email Id: hyderabad.crmhead@mgdealer.co.in, Website: https://www.mghyderabad.co.in,  GSTIN: 36AAYFR9176L1ZY, CIN NO: AAN-7654, PAN: AAYFR9176L",
       imageData: typeData === "ewpolicy" ? "https://firebasestorage.googleapis.com/v0/b/car-protect-99a26.firebasestorage.app/o/files%2FRG%20Portal%2F360.png?alt=media&token=5221f392-a303-4a35-8ec5-c823751059c4" :pageTypeBData === "typeThreePages" ? "https://firebasestorage.googleapis.com/v0/b/car-protect-99a26.firebasestorage.app/o/files%2FRG%20Portal%2FType%203%20Page%204.png?alt=media&token=bea83844-81ef-4df2-80f6-b785a16fbe7d" :"https://firebasestorage.googleapis.com/v0/b/car-protect-99a26.firebasestorage.app/o/files%2FRG%20Portal%2FRG%20Stamp.jpeg?alt=media&token=fc1bdb53-20bd-46b3-963c-7e8e507fceb1",
       imageDataOne:typeData !== "ewpolicy" &&"https://firebasestorage.googleapis.com/v0/b/car-protect-99a26.firebasestorage.app/o/files%2FMG-symbol-black-2010-1920x1080-removebg-preview.png?alt=media&token=4df87beb-002a-4956-9ad4-36902a5a6bdd",
