@@ -13,7 +13,9 @@ exports.AmcFormData = async (req, res) => {
     const amcData = req.body;
     const vinNumber = amcData.vehicleDetails.vinNumber;
     const email = amcData.customerDetails.email;
-    const duplicateVinNumber = await AMCs.findOne({ vinNumber });
+    const duplicateVinNumber = await AMCs.findOne({
+  "vehicleDetails.vinNumber": vinNumber,
+})
     if (duplicateVinNumber) {
       return res.status(400).json({
         message: "Vehicle vin number already exists",
@@ -144,7 +146,9 @@ exports.AmcSalesFormData = async (req, res) => {
     const amcData = req.body;
     const vinNumber = amcData.vehicleDetails.vinNumber;
     const email = amcData.customerDetails.email;
-    const duplicateVinNumber = await AMCs.findOne({ vinNumber });
+   const duplicateVinNumber = await AMCs.findOne({
+  "vehicleDetails.vinNumber": vinNumber,
+})
     if (duplicateVinNumber) {
       return res.status(400).json({
         message: "Vehicle vin number already exists",
@@ -190,7 +194,7 @@ exports.AmcSalesFormData = async (req, res) => {
 exports.createExtendedPolicy = async (req, res) => {
   const { id } = req.params; // this is vinNumber
 
-  const { extendedPolicyPeriod, additionalPrice, paymentCopyProof, openForm } =
+  const { extendedPolicyPeriod, additionalPrice, paymentCopyProof,upcomingPackage, validDate, validMileage, openForm } =
     req.body;
 
   try {
@@ -216,6 +220,9 @@ exports.createExtendedPolicy = async (req, res) => {
       additionalPrice,
       paymentCopyProof,
       openForm,
+      upcomingPackage,
+      validMileage,
+      validDate,
       submittedAt: new Date(),
     };
     AMCdata.amcStatus = "pending";

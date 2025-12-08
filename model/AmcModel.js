@@ -150,7 +150,9 @@ const extendedPolicySchema = mongoose.Schema({
   submittedAt: Date,
   validDate: String,
   validMileage: String,
-  upcomingPackage: Array,
+  upcomingPackage: {
+    type: Array,
+  },
 });
 
 const amcAssuredSchema = mongoose.Schema({
