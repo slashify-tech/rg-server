@@ -327,7 +327,7 @@ exports.AgentPolicyRejectedEmail = async (
     optional: null,
     optional: null,
     optional: null,
- policyType: "EwPolicy",
+ policyType: "AMC",
     optional: null,
     emailType,
   });

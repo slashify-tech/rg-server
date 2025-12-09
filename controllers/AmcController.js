@@ -318,7 +318,7 @@ exports.updateAMCStatus = async (req, res) => {
           "Raam4Wheelers LLP"
         );
 
-        // await AMCs.findByIdAndDelete(id);
+        await AMCs.findByIdAndDelete(id);
 
         // console.log(`AMCdata with ID: ${id} deleted immediately`);
 

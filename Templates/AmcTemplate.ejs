@@ -116,20 +116,22 @@
 <% } %>
 
         <p>
-          Agreement Period: <%= data.extendedPolicy?.extendedPolicyPeriod 
-      ? data.extendedPolicy.extendedPolicyPeriod 
-      : data.vehicleDetails.agreementPeriod 
+          Agreement Period: <%= (data.amcStatus === "approved" && data.extendedPolicy?.extendedPolicyPeriod)
+      ? data.extendedPolicy.extendedPolicyPeriod
+      : (data.vehicleDetails?.agreementPeriod || "NA")
 %>
+
 
         </p>
         <p>
           Agreement Start date: <%= data.vehicleDetails.agreementStartDate %>
         </p>
         <p>
-          Agreement Valid Date: <%= data.extendedPolicy?.validDate 
-      ? data.extendedPolicy.validDate 
-      : data.vehicleDetails.agreementValidDate 
+          Agreement Valid Date: <%= (data.amcStatus === "approved" && data.extendedPolicy?.validDate)
+      ? data.extendedPolicy.validDate
+      : (data.vehicleDetails?.agreementValidDate || "NA")
 %>
+
 
 
         </p>
@@ -138,10 +140,11 @@
 
         </p>
         <p>
-          Agreement Valid Milage: <%= data.extendedPolicy?.upcomingPackage 
-      ? data.extendedPolicy.upcomingPackage 
-      : data.vehicleDetails.agreementValidMilage 
+          Agreement Valid Milage: <%= (data.amcStatus === "approved" && data.extendedPolicy?.validMileage)
+      ? data.extendedPolicy.validMileage
+      : (data.vehicleDetails?.agreementValidMilage || "NA")
 %>
+
 kms/Running of the vehicle, whichever
             of the two occurs earlier.
         </p>

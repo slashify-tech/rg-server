@@ -112,12 +112,17 @@ const generatePdf = async (html, pdfType) => {
     //   timeout: 180000, // Increased timeout
     // });
 
-     browser = await puppeteer.launch({  //production code for aws ec2 
-      executablePath: '/usr/bin/chromium-browser', // Path to system-installed Chromium
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-    
+   browser = await puppeteer.launch({
+  executablePath: process.env.CHROME_PATH || "/usr/bin/chromium",
+  headless: true,
+  args: [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--disable-software-rasterizer"
+  ],
+});
 
     const page = await browser.newPage();
 
@@ -136,7 +141,7 @@ const generatePdf = async (html, pdfType) => {
     
   await page.setContent(html, { waitUntil: 'load' });
 
-  let pdfBuffer;
+ let pdfBuffer;
   if (pdfType === "pdfInvoice") {
     pdfBuffer = await page.pdf({ format: "A3", printBackground: true });
   } else if (pdfType === "pdfbuyBack") {
