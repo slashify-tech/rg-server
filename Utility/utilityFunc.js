@@ -30,9 +30,29 @@ const decryptText = (encryptedText) => {
     
     return `${day}/${month}/${year}`; 
   };
+
+
+  const formatAmountObj =(obj)=> {
+  const formatted = {};
+  for (let key in obj) {
+    formatted[key] = formatNumberStats(obj[key]);
+  }
+  return formatted;
+}
+
+const formatNumberStats = (num) =>{
+  num = Number(num);
+  if (num >= 1_00_00_000) return (num / 1_00_00_000).toFixed(2) + " Cr";
+  if (num >= 1_00_000) return (num / 1_00_000).toFixed(2) + " Lakh";
+  if (num >= 1_000) return (num / 1_000).toFixed(2) + " K";
+  return num.toString();
+}
+
 module.exports = {
     encryptText,
     formatIsoDate,
     decryptText,
-    encodeEmail
+    encodeEmail,
+    formatAmountObj,
+    formatNumberStats
 };

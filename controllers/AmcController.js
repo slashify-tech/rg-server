@@ -7,6 +7,7 @@ const path = require("path");
 const { parse: json2csv } = require("json2csv");
 const { formatNumber } = require("../helper/countreunvtion");
 const mongoose = require("mongoose");
+const { formatAmountObj, formatNumberStats } = require("../Utility/utilityFunc");
 
 exports.AmcFormData = async (req, res) => {
   try {
@@ -593,6 +594,7 @@ exports.addExpenseData = async (req, res) => {
       });
     }
 
+    // Map serviceData by VIN
     const serviceDataMap = new Map(
       serviceData.map((entry) => [entry.serviceVinNumber, entry.expenses])
     );
@@ -602,41 +604,43 @@ exports.addExpenseData = async (req, res) => {
         const vinNumber = amcRecord.vehicleDetails.vinNumber;
         const expenses = serviceDataMap.get(vinNumber) || [];
 
-        const existingDates = new Set(
-          amcRecord?.amcExpense?.map((e) => e.serviceDate)
+        const existingServiceKeys = new Set(
+          amcRecord?.amcExpense?.map(
+            (e) => `${e.serviceDate}-${e.serviceType}` // Unique Key
+          )
         );
 
-        const newServices = expenses.filter(
-          (e) => !existingDates.has(e.serviceDate)
+        // Filter out ONLY unique services (ignore duplicates)
+        const uniqueServices = expenses.filter((e) => {
+          const key = `${e.serviceDate}-${e.serviceType}`;
+          return !existingServiceKeys.has(key);
+        });
+
+        if (uniqueServices.length === 0) return null;
+
+        const updateFields = {
+          $push: { amcExpense: { $each: uniqueServices } },
+        };
+
+        // ------------------------------
+        // NEW AMC CREDIT LOGIC
+        // Remove matched services from amc.vehicleDetails.custUpcomingService
+        // ------------------------------
+
+        const incomingTypes = uniqueServices.map((s) =>
+          s.serviceType?.trim().toLowerCase()
         );
-        const repeatedServices = expenses.filter((e) =>
-          existingDates.has(e.serviceDate)
-        );
 
-        if (newServices.length === 0 && repeatedServices.length === 0)
-          return null;
+        let updatedUpcoming = amcRecord.vehicleDetails.custUpcomingService || [];
 
-        const updateFields = {};
+        updatedUpcoming = updatedUpcoming.filter((service) => {
+          const s = service.trim().toLowerCase();
+          return !incomingTypes.includes(s); // remove matched
+        });
 
-        // Deduct AMC credit only for new services
-        if (newServices.length > 0) {
-          updateFields.$push = { amcExpense: { $each: newServices } };
-          updateFields.$set = {
-            amcCredit: Math.max(
-              (Number(amcRecord.amcCredit) || 0) - newServices.length,
-              0
-            ),
-          };
-        }
-
-        // Save repeated services (no AMC deduction)
-        if (repeatedServices.length > 0) {
-          updateFields.$push = updateFields.$push || {};
-          updateFields.$push.amcExpense = updateFields.$push.amcExpense || {
-            $each: [],
-          };
-          updateFields.$push.amcExpense.$each.push(...repeatedServices);
-        }
+        updateFields.$set = {
+          "vehicleDetails.custUpcomingService": updatedUpcoming,
+        };
 
         return {
           updateOne: {
@@ -650,7 +654,7 @@ exports.addExpenseData = async (req, res) => {
     if (updates.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "No new service entries to update.",
+        message: "No new unique service entries to update.",
       });
     }
 
@@ -668,6 +672,7 @@ exports.addExpenseData = async (req, res) => {
     });
   }
 };
+
 
 exports.getamcStats = async (req, res) => {
   try {
@@ -708,10 +713,12 @@ exports.getamcStats = async (req, res) => {
     let totalLabourPrice = 0;
     let totalVasPrice = 0;
 
-    const serviceTypeCount = {};
+    // Instead of count → store TOTAL AMOUNT
+    const serviceTypeAmount = {};
 
-    // Track PMS per VIN
+    // Track PMS & Free services per VIN
     const pmsTracker = {};
+    const freeTracker = {};
 
     amcDocs.forEach((doc) => {
       const vin = doc.vehicleDetails?.vinNumber;
@@ -723,43 +730,70 @@ exports.getamcStats = async (req, res) => {
 
         if (!item.serviceType) return;
 
-        let key = item.serviceType.trim();
+        let key = item.serviceType.trim().toLowerCase();
+        const amount = Number(item.serviceTotalAmount || 0);
 
-        const isPMS = key.toLowerCase().includes("pms");
-
-        // -------- PMS Logic (Limit to 7) ----------
-        if (isPMS) {
+        // ------------------ PMS LOGIC ------------------
+        if (key.includes("pms")) {
           pmsTracker[vin] = (pmsTracker[vin] || 0) + 1;
-
           const count = pmsTracker[vin];
 
-          if (count > 7) {
-            return; // IGNORE PMS beyond 7th
-          }
+          if (count > 5) return;
 
           const suffix =
             count === 1 ? "1st" :
             count === 2 ? "2nd" :
-            count === 3 ? "3rd" :
-            `${count}th`;
+            count === 3 ? "3rd" : `${count}th`;
 
-          key = `${suffix} Preventive Maintenance Service(PMS)`;
+          key = `${suffix} Preventive Maintenance Service (PMS)`;
         }
 
-        // Normal Count logic
-        serviceTypeCount[key] = (serviceTypeCount[key] || 0) + 1;
+        // ------------------ FREE SERVICE LOGIC ------------------
+        else if (key.includes("free")) {
+          freeTracker[vin] = (freeTracker[vin] || 0) + 1;
+
+          const count = freeTracker[vin];
+          if (count > 5) return;
+
+          const suffix =
+            count === 1 ? "1st" :
+            count === 2 ? "2nd" :
+            count === 3 ? "3rd" : `${count}th`;
+
+          key = `${suffix} Free Service`;
+        }
+
+        // accumulate AMOUNT instead of COUNT
+        serviceTypeAmount[key] = (serviceTypeAmount[key] || 0) + amount;
       });
     });
 
+    // ------------------ SORTING FREE SERVICES FIRST THEN PMS ------------------
+    const sortedOutput = {};
+
+    const freeOrder = ["1st", "2nd", "3rd", "4th", "5th"];
+    freeOrder.forEach(num => {
+      const key = `${num} Free Service`;
+      if (serviceTypeAmount[key]) sortedOutput[key] = formatNumberStats(serviceTypeAmount[key]);
+    });
+
+    const pmsOrder = ["1st", "2nd", "3rd", "4th", "5th"];
+    pmsOrder.forEach(num => {
+      const key = `${num} Preventive Maintenance Service (PMS)`;
+      if (serviceTypeAmount[key]) sortedOutput[key] = formatNumberStats(serviceTypeAmount[key]);
+    });
+
+    // ------------------ RESPONSE ------------------
     return res.status(200).json({
       success: true,
-      totalamcCount: formatNumber(totalamcCount),
-      totalRevenue: formatNumber(totalRevenue),
-      totalExpense: formatNumber(totalExpense),
-      totalPartsPrice: formatNumber(totalPartsPrice),
-      totalLabourPrice: formatNumber(totalLabourPrice),
-      totalVasPrice: formatNumber(totalVasPrice),
-      serviceTypeCount,
+      totalamcCount: formatNumberStats(totalamcCount),
+      totalRevenue: formatNumberStats(totalRevenue),
+      totalExpense: formatNumberStats(totalExpense),
+      totalPartsPrice: formatNumberStats(totalPartsPrice),
+      totalLabourPrice: formatNumberStats(totalLabourPrice),
+      totalVasPrice: formatNumberStats(totalVasPrice),
+
+      serviceTypeAmount: sortedOutput,
     });
 
   } catch (error) {
@@ -770,6 +804,7 @@ exports.getamcStats = async (req, res) => {
     });
   }
 };
+
 
 exports.getamcAssuredStats = async (req, res) => {
   try {
