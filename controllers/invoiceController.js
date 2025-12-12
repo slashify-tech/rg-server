@@ -133,9 +133,10 @@ exports.addInvoice = async (req, res) => {
         ewPolicyData?.customerDetails?.customerName || "EwPolicy"
       }.pdf`;
     }
-    const invoiceData = await Invoice.findOne({
-      serviceId: new mongoose.Types.ObjectId(serviceId),
-    });
+   const invoiceData = await Invoice.findOne({
+  serviceId: new mongoose.Types.ObjectId(serviceId),
+})
+  .sort({ createdAt: -1 }); 
     const invoiceHTML = await renderEmailTemplate(
       invoiceData,
       "../Templates/InvoicePdf.ejs",

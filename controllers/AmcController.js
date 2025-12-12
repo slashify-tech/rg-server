@@ -221,6 +221,7 @@ exports.createExtendedPolicy = async (req, res) => {
     validDate,
     validMileage,
     openForm,
+    edit,
   } = req.body;
 
   try {
@@ -230,7 +231,7 @@ exports.createExtendedPolicy = async (req, res) => {
       });
     }
 
-    // Find AMC by vinNumber
+    // Find AMC by VIN number
     const AMCdata = await AMCs.findOne({
       "vehicleDetails.vinNumber": id,
     });
@@ -241,39 +242,71 @@ exports.createExtendedPolicy = async (req, res) => {
       });
     }
 
-    // FIX: Convert old object → array (IMPORTANT!)
-
+    // Ensure extendedPolicy is always an array
     if (!Array.isArray(AMCdata.extendedPolicy)) {
       AMCdata.extendedPolicy = AMCdata.extendedPolicy
-        ? [AMCdata.extendedPolicy] // convert object to array
-        : []; // init empty array
+        ? [AMCdata.extendedPolicy]
+        : [];
     }
 
-    // Push new extended policy entry
+   
+    if (edit === true) {
+      // Find latest pending extended policy
+      const pendingIndex = [...AMCdata.extendedPolicy]
+        .map((p, i) => ({ p, i }))
+        .filter(({ p }) => p.extendedStatus === "pending")
+        .sort(
+          (a, b) =>
+            new Date(b.p.submittedAt) - new Date(a.p.submittedAt)
+        )[0]?.i;
 
-    AMCdata.extendedPolicy.push({
-      extendedPolicyPeriod,
-      additionalPrice,
-      paymentCopyProof,
-      openForm,
-      upcomingPackage,
-      validMileage,
-      validDate,
-      extendedStatus: "pending",
-      submittedAt: new Date(),
-    });
+      if (pendingIndex === undefined) {
+        return res.status(400).json({
+          message: "No pending extended policy found to update.",
+        });
+      }
 
-    // Update AMC status
+      // Update the latest pending entry
+      AMCdata.extendedPolicy[pendingIndex] = {
+        ...AMCdata.extendedPolicy[pendingIndex],
+        extendedPolicyPeriod,
+        additionalPrice,
+        paymentCopyProof,
+        upcomingPackage,
+        validMileage,
+        validDate,
+        openForm,
+        updatedAt: new Date(),
+      };
+    }
+   
+    else {
+      AMCdata.extendedPolicy.push({
+        extendedPolicyPeriod,
+        additionalPrice,
+        paymentCopyProof,
+        upcomingPackage,
+        validMileage,
+        validDate,
+        openForm,
+        extendedStatus: "pending",
+        submittedAt: new Date(),
+      });
+    }
+
+    // AMC stays pending until approval
     AMCdata.amcStatus = "pending";
 
     await AMCdata.save();
 
     return res.status(200).json({
-      message: "Extended policy added successfully",
+      message: edit
+        ? "Extended policy updated successfully"
+        : "Extended policy added successfully",
       data: AMCdata,
     });
   } catch (error) {
-    console.error("Error creating extended policy:", error);
+    console.error("Error creating/updating extended policy:", error);
     res.status(500).json({
       message: "Internal Server Error",
       error: error.message,
