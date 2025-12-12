@@ -377,7 +377,8 @@ exports.editInvoice = async (req, res) => {
           : null;
 
       const agentData = await User.findOne({ _id: policyData.createdBy });
-
+ const emailData =
+      agentData?.email || policyData.vehicleDetails?.salesTeamEmail;
       // await sendDocEmail(
       //   policyType,
       //   invoiceData.vehicleDetails.vinNumber,
@@ -407,7 +408,7 @@ exports.editInvoice = async (req, res) => {
         policyData.customId,
         rmEmail,
         gmEmail,
-        agentData.email,
+        emailData,
         invoiceTypeData === "ewpolicy"
           ? "360 CAR PROTECT INDIA LLP"
           : "Raam4Wheelers LLP"
