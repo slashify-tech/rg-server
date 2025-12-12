@@ -798,7 +798,7 @@ exports.getamcStats = async (req, res) => {
       if (serviceTypeAmount[key]) sortedOutput[key] = formatNumberStats(serviceTypeAmount[key]);
     });
 
-    const pmsOrder = ["1st", "2nd", "3rd", "4th", "5th"];
+    const pmsOrder = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th"];
     pmsOrder.forEach(num => {
       const key = `${num} Preventive Maintenance Service (PMS)`;
       if (serviceTypeAmount[key]) sortedOutput[key] = formatNumberStats(serviceTypeAmount[key]);
