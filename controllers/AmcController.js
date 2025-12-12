@@ -579,7 +579,7 @@ exports.amcDataById = async (req, res) => {
       showAmount =
         finalPolicy.additionalPrice || data?.vehicleDetails?.totalAmount || 0;
     } else {
-      showAmount = data?.vehicleDetails?.totalAmount || 0;
+      showAmount = data?.vehicleDetails?.total|| 0;
     }
 
     return res.status(200).json({
