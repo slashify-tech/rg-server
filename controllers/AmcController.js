@@ -438,24 +438,30 @@ exports.amcDataById = async (req, res) => {
 
     let data = null;
 
+    // -----------------------------
+    // FIND BY ID OR VIN NUMBER
+    // -----------------------------
     if (id) {
-      // Check if `id` is a valid ObjectId
+      // If valid ObjectId → search `_id`
       if (mongoose.Types.ObjectId.isValid(id)) {
-        data = await AMCs.findOne({ _id: id, ...(status && { status }) });
+        data = await AMCs.findOne({
+          _id: id,
+          ...(status && { amcStatus: status }),
+        });
       }
 
-      // If not found by _id OR not a valid ObjectId → search by VIN
+      // If not found OR invalid ObjectId → search VIN
       if (!data) {
         data = await AMCs.findOne({
           "vehicleDetails.vinNumber": id,
-          ...(status && { status }),
+          ...(status && { amcStatus: status }),
         });
       }
     }
 
-    // If only status is provided (no ID)
+    // If only status provided
     if (!id && status) {
-      data = await AMCs.findOne({ status });
+      data = await AMCs.findOne({ amcStatus: status });
     }
 
     if (!data) {
@@ -464,16 +470,45 @@ exports.amcDataById = async (req, res) => {
       });
     }
 
-    const showAmount =
-      data.extendedPolicy?.additionalPrice || data.vehicleDetails?.total || 0;
+    // Convert to plain object
+    let finalData = data.toObject();
 
+    // ------------------------------------------
+    // HIDE extendedPolicy WHEN AMC NOT APPROVED
+    // ------------------------------------------
+    const isApproved = data.amcStatus === "approved";
+
+    if (!isApproved) {
+      finalData.extendedPolicy = null;
+    }
+
+    // ------------------------------------------
+    // showAmount also depends on approved status
+    // ------------------------------------------
+    let showAmount;
+
+    if (isApproved) {
+      // APPROVED → extendedPolicy allowed
+      showAmount =
+        data.extendedPolicy?.additionalPrice ||
+        data.vehicleDetails?.total ||
+        0;
+    } else {
+      // NOT APPROVED → extendedPolicy ignored
+      showAmount = data.vehicleDetails?.total || 0;
+    }
+
+    // ------------------------------------------
+    // SEND RESPONSE
+    // ------------------------------------------
     return res.status(200).json({
       message: "Data fetched successfully",
       data: {
-        ...data.toObject(),
+        ...finalData,
         showAmount,
       },
     });
+
   } catch (error) {
     console.error("Error fetching AMC data:", error);
     return res.status(500).json({
@@ -482,6 +517,7 @@ exports.amcDataById = async (req, res) => {
     });
   }
 };
+
 
 exports.getAllAmcList = async (req, res) => {
   const { page = 1, limit = 10, search = "", id, status } = req.query;
