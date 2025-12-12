@@ -112,15 +112,21 @@ const generatePdf = async (html, pdfType) => {
     //   timeout: 180000, // Increased timeout
     // });
 
-   browser = await puppeteer.launch({
-  executablePath: process.env.CHROME_PATH || "/usr/bin/chromium",
+browser = await puppeteer.launch({
+  executablePath:
+    process.env.CHROME_PATH ||
+    "/usr/bin/chromium-browser" ||
+    "/usr/bin/chromium" ||
+    "/snap/bin/chromium" ||
+    "/usr/bin/google-chrome",
+
   headless: true,
   args: [
     "--no-sandbox",
     "--disable-setuid-sandbox",
     "--disable-dev-shm-usage",
     "--disable-gpu",
-    "--disable-software-rasterizer"
+    "--disable-software-rasterizer",
   ],
 });
 
