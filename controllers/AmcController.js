@@ -759,7 +759,7 @@ exports.getamcStats = async (req, res) => {
           pmsTracker[vin] = (pmsTracker[vin] || 0) + 1;
           const count = pmsTracker[vin];
 
-          if (count > 5) return;
+          if (count > 7) return;
 
           const suffix =
             count === 1 ? "1st" :
