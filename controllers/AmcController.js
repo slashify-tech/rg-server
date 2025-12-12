@@ -560,7 +560,6 @@ exports.AMCResubmit = async (req, res) => {
     }
     AMCData.amcStatus = "pending";
     await AMCData.save();
-    MZ7BD1D3J4H068951;
     return res
       .status(200)
       .json({ message: "AMC fetched successfully", AMCData });
@@ -604,13 +603,14 @@ exports.addExpenseData = async (req, res) => {
         const vinNumber = amcRecord.vehicleDetails.vinNumber;
         const expenses = serviceDataMap.get(vinNumber) || [];
 
+        // Create unique key: serviceDate + serviceType
         const existingServiceKeys = new Set(
           amcRecord?.amcExpense?.map(
-            (e) => `${e.serviceDate}-${e.serviceType}` // Unique Key
+            (e) => `${e.serviceDate}-${e.serviceType}`
           )
         );
 
-        // Filter out ONLY unique services (ignore duplicates)
+        // Filter unique services only
         const uniqueServices = expenses.filter((e) => {
           const key = `${e.serviceDate}-${e.serviceType}`;
           return !existingServiceKeys.has(key);
@@ -622,24 +622,45 @@ exports.addExpenseData = async (req, res) => {
           $push: { amcExpense: { $each: uniqueServices } },
         };
 
-        // ------------------------------
-        // NEW AMC CREDIT LOGIC
-        // Remove matched services from amc.vehicleDetails.custUpcomingService
-        // ------------------------------
+        // ======================================
+        // NEW AMC CREDIT REMOVAL LOGIC (FINAL)
+        // Remove FREE + PMS from BOTH arrays
+        // ======================================
 
-        const incomingTypes = uniqueServices.map((s) =>
-          s.serviceType?.trim().toLowerCase()
-        );
+        let upcoming = [...(amcRecord.vehicleDetails.custUpcomingService || [])];
+        let extUpcoming = [...(amcRecord.extendedPolicy?.upcomingPackage || [])];
 
-        let updatedUpcoming = amcRecord.vehicleDetails.custUpcomingService || [];
+        // Normalize strings: lowercase + collapse spaces
+        const normalize = (str) =>
+          str?.toLowerCase().replace(/\s+/g, " ").trim();
 
-        updatedUpcoming = updatedUpcoming.filter((service) => {
-          const s = service.trim().toLowerCase();
-          return !incomingTypes.includes(s); // remove matched
+        // Helper: remove matching service from given arr
+        const removeService = (arr, incoming) => {
+          const idx = arr.findIndex(
+            (x) => normalize(x) === incoming
+          );
+          if (idx !== -1) {
+            arr.splice(idx, 1);   // remove only FIRST matched → maintains order
+            return true;
+          }
+          return false;
+        };
+
+        // Loop through new services and remove from both lists
+        uniqueServices.forEach((svc) => {
+          const incoming = normalize(svc.serviceType);
+
+          // Try removing from custUpcomingService
+          if (removeService(upcoming, incoming)) return;
+
+          // If not found there, remove from extendedPolicy.upcomingPackage
+          removeService(extUpcoming, incoming);
         });
 
+        // Save updated arrays
         updateFields.$set = {
-          "vehicleDetails.custUpcomingService": updatedUpcoming,
+          "vehicleDetails.custUpcomingService": upcoming,
+          "extendedPolicy.upcomingPackage": extUpcoming,
         };
 
         return {
