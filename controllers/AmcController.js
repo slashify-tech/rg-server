@@ -4,10 +4,13 @@ const Invoice = require("../model/InvoiceModel");
 const User = require("../model/User");
 const fs = require("fs");
 const path = require("path");
-const { parse: json2csv } = require("json2csv");
+const { Parser } = require("json2csv");
 const { formatNumber } = require("../helper/countreunvtion");
 const mongoose = require("mongoose");
-const { formatAmountObj, formatNumberStats } = require("../Utility/utilityFunc");
+const {
+  formatAmountObj,
+  formatNumberStats,
+} = require("../Utility/utilityFunc");
 
 exports.AmcFormData = async (req, res) => {
   try {
@@ -15,8 +18,8 @@ exports.AmcFormData = async (req, res) => {
     const vinNumber = amcData.vehicleDetails.vinNumber;
     const email = amcData.customerDetails.email;
     const duplicateVinNumber = await AMCs.findOne({
-  "vehicleDetails.vinNumber": vinNumber,
-})
+      "vehicleDetails.vinNumber": vinNumber,
+    });
     if (duplicateVinNumber) {
       return res.status(400).json({
         message: "Vehicle vin number already exists",
@@ -33,11 +36,19 @@ exports.AmcFormData = async (req, res) => {
     const currentYear = new Date().getFullYear();
     const last5DigitsOfVin = vinNumber.slice(-5);
     const customId = `Raam-AMC-${currentYear}-${last5DigitsOfVin}`;
-    const amcCredit = Number(amcData.vehicleDetails?.agreementPeriod) || 0;
+    // const amcCredit = Number(amcData.vehicleDetails?.agreementPeriod) || 0;
+    let totalCredit = [];
 
+    if (
+      Array.isArray(amcData?.vehicleDetails?.custUpcomingService) &&
+      amcData.vehicleDetails.custUpcomingService.length > 0
+    ) {
+      totalCredit = [...amcData.vehicleDetails.custUpcomingService];
+    }
     const newAmc = new AMCs({
       ...amcData,
-      amcCredit,
+      totalCredit,
+      // amcCredit,
       customId,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -147,9 +158,9 @@ exports.AmcSalesFormData = async (req, res) => {
     const amcData = req.body;
     const vinNumber = amcData.vehicleDetails.vinNumber;
     const email = amcData.customerDetails.email;
-   const duplicateVinNumber = await AMCs.findOne({
-  "vehicleDetails.vinNumber": vinNumber,
-})
+    const duplicateVinNumber = await AMCs.findOne({
+      "vehicleDetails.vinNumber": vinNumber,
+    });
     if (duplicateVinNumber) {
       return res.status(400).json({
         message: "Vehicle vin number already exists",
@@ -166,11 +177,19 @@ exports.AmcSalesFormData = async (req, res) => {
     const currentYear = new Date().getFullYear();
     const last5DigitsOfVin = vinNumber.slice(-5);
     const customId = `Raam-AMC-${currentYear}-${last5DigitsOfVin}`;
-    const amcCredit = Number(amcData.vehicleDetails?.agreementPeriod) || 0;
+    // const amcCredit = Number(amcData.vehicleDetails?.agreementPeriod) || 0;
+    let totalCredit = [];
 
+    if (
+      Array.isArray(amcData?.vehicleDetails?.custUpcomingService) &&
+      amcData.vehicleDetails.custUpcomingService.length > 0
+    ) {
+      totalCredit = [...amcData.vehicleDetails.custUpcomingService];
+    }
     const newAmc = new AMCs({
       ...amcData,
-      amcCredit,
+      totalCredit,
+      // amcCredit,
       customId,
       isAmcSalesOrService: true,
       createdAt: new Date(),
@@ -191,12 +210,18 @@ exports.AmcSalesFormData = async (req, res) => {
     });
   }
 };
-
 exports.createExtendedPolicy = async (req, res) => {
-  const { id } = req.params; // this is vinNumber
+  const { id } = req.params; // VIN Number
 
-  const { extendedPolicyPeriod, additionalPrice, paymentCopyProof,upcomingPackage, validDate, validMileage, openForm } =
-    req.body;
+  const {
+    extendedPolicyPeriod,
+    additionalPrice,
+    paymentCopyProof,
+    upcomingPackage,
+    validDate,
+    validMileage,
+    openForm,
+  } = req.body;
 
   try {
     if (!extendedPolicyPeriod || !additionalPrice || !paymentCopyProof) {
@@ -205,7 +230,7 @@ exports.createExtendedPolicy = async (req, res) => {
       });
     }
 
-    // Find the AMC document by vinNumber
+    // Find AMC by vinNumber
     const AMCdata = await AMCs.findOne({
       "vehicleDetails.vinNumber": id,
     });
@@ -216,7 +241,17 @@ exports.createExtendedPolicy = async (req, res) => {
       });
     }
 
-    AMCdata.extendedPolicy = {
+    // FIX: Convert old object → array (IMPORTANT!)
+
+    if (!Array.isArray(AMCdata.extendedPolicy)) {
+      AMCdata.extendedPolicy = AMCdata.extendedPolicy
+        ? [AMCdata.extendedPolicy] // convert object to array
+        : []; // init empty array
+    }
+
+    // Push new extended policy entry
+
+    AMCdata.extendedPolicy.push({
       extendedPolicyPeriod,
       additionalPrice,
       paymentCopyProof,
@@ -224,14 +259,17 @@ exports.createExtendedPolicy = async (req, res) => {
       upcomingPackage,
       validMileage,
       validDate,
+      extendedStatus: "pending",
       submittedAt: new Date(),
-    };
+    });
+
+    // Update AMC status
     AMCdata.amcStatus = "pending";
 
     await AMCdata.save();
 
     return res.status(200).json({
-      message: "Extended policy updated successfully",
+      message: "Extended policy added successfully",
       data: AMCdata,
     });
   } catch (error) {
@@ -357,17 +395,47 @@ exports.updateAMCStatus = async (req, res) => {
 
     // Handle approval case
     if (type === "approved") {
-      AMCdata.amcStatus = "approved";
-      AMCdata.approvedAt = new Date();
+      // Always ensure extendedPolicy is an array
+      if (!Array.isArray(AMCdata.extendedPolicy)) {
+        AMCdata.extendedPolicy = AMCdata.extendedPolicy
+          ? [AMCdata.extendedPolicy]
+          : [];
+      }
 
+      // Get latest extended policy entry
+      const latestPolicy =
+        AMCdata.extendedPolicy.length > 0
+          ? AMCdata.extendedPolicy[AMCdata.extendedPolicy.length - 1]
+          : null;
+
+      // If extended policy exists and is pending → approve it
+      if (latestPolicy && latestPolicy.extendedStatus === "pending") {
+        latestPolicy.extendedStatus = "approved";
+      }
+
+      // 🔍 CHECK: If latest extended policy is approved → Add upcomingPackage to totalCredit
+      if (latestPolicy && latestPolicy.extendedStatus === "approved") {
+        // Make sure totalCredit exists and is array
+        if (!Array.isArray(AMCdata.totalCredit)) {
+          AMCdata.totalCredit = [];
+        }
+
+        if (Array.isArray(latestPolicy.upcomingPackage)) {
+          AMCdata.totalCredit.push(...latestPolicy.upcomingPackage);
+        }
+      }
+
+      // Approve AMC
       AMCdata.amcStatus = "approved";
       AMCdata.approvedAt = new Date();
 
       await AMCdata.save();
 
-      return res
-        .status(200)
-        .json({ message: "AMC approved", AMCdata, status: 200 });
+      return res.status(200).json({
+        message: "AMC approved",
+        AMCdata,
+        status: 200,
+      });
     }
 
     AMCdata.amcStatus = "pending";
@@ -427,7 +495,7 @@ exports.disableAmc = async (req, res) => {
 };
 
 exports.amcDataById = async (req, res) => {
-  const { id, status } = req.query;
+  const { id, status, newExtend } = req.query;
 
   try {
     if (!id && !status) {
@@ -438,11 +506,8 @@ exports.amcDataById = async (req, res) => {
 
     let data = null;
 
-    // -----------------------------
-    // FIND BY ID OR VIN NUMBER
-    // -----------------------------
+    // Find by ObjectId or VIN
     if (id) {
-      // If valid ObjectId → search `_id`
       if (mongoose.Types.ObjectId.isValid(id)) {
         data = await AMCs.findOne({
           _id: id,
@@ -450,7 +515,6 @@ exports.amcDataById = async (req, res) => {
         });
       }
 
-      // If not found OR invalid ObjectId → search VIN
       if (!data) {
         data = await AMCs.findOne({
           "vehicleDetails.vinNumber": id,
@@ -459,7 +523,7 @@ exports.amcDataById = async (req, res) => {
       }
     }
 
-    // If only status provided
+    // Find by status only
     if (!id && status) {
       data = await AMCs.findOne({ amcStatus: status });
     }
@@ -470,37 +534,54 @@ exports.amcDataById = async (req, res) => {
       });
     }
 
-    // Convert to plain object
     let finalData = data.toObject();
 
-    // ------------------------------------------
-    // HIDE extendedPolicy WHEN AMC NOT APPROVED
-    // ------------------------------------------
-    const isApproved = data.amcStatus === "approved";
+    // ----------------------------------------------------
+    // EXTENDED POLICY SELECTION LOGIC
+    // ----------------------------------------------------
 
-    if (!isApproved) {
-      finalData.extendedPolicy = null;
+    let finalPolicy = null;
+
+    const policies = data.extendedPolicy || [];
+
+    if (policies.length > 0) {
+      const lastItem = policies[policies.length - 1];
+
+      if (newExtend === "true") {
+        // RETURN LATEST ALWAYS (even pending)
+        finalPolicy = lastItem;
+      } else {
+        // EXISTING LOGIC: return latest approved only
+        if (lastItem.extendedStatus === "approved") {
+          finalPolicy = lastItem;
+        } else {
+          // Find last approved if latest is pending
+          const approvedList = policies.filter(
+            (p) => p.extendedStatus === "approved"
+          );
+          finalPolicy =
+            approvedList.length > 0
+              ? approvedList[approvedList.length - 1]
+              : null;
+        }
+      }
     }
 
-    // ------------------------------------------
-    // showAmount also depends on approved status
-    // ------------------------------------------
-    let showAmount;
+    finalData.extendedPolicy = finalPolicy;
 
-    if (isApproved) {
-      // APPROVED → extendedPolicy allowed
+    // ----------------------------------------------------
+    // SHOW AMOUNT LOGIC (USE LATEST IF newExtend=true)
+    // ----------------------------------------------------
+
+    let showAmount = 0;
+
+    if (finalPolicy) {
       showAmount =
-        data.extendedPolicy?.additionalPrice ||
-        data.vehicleDetails?.total ||
-        0;
+        finalPolicy.additionalPrice || data?.vehicleDetails?.totalAmount || 0;
     } else {
-      // NOT APPROVED → extendedPolicy ignored
-      showAmount = data.vehicleDetails?.total || 0;
+      showAmount = data?.vehicleDetails?.totalAmount || 0;
     }
 
-    // ------------------------------------------
-    // SEND RESPONSE
-    // ------------------------------------------
     return res.status(200).json({
       message: "Data fetched successfully",
       data: {
@@ -508,7 +589,6 @@ exports.amcDataById = async (req, res) => {
         showAmount,
       },
     });
-
   } catch (error) {
     console.error("Error fetching AMC data:", error);
     return res.status(500).json({
@@ -517,7 +597,6 @@ exports.amcDataById = async (req, res) => {
     });
   }
 };
-
 
 exports.getAllAmcList = async (req, res) => {
   const { page = 1, limit = 10, search = "", id, status } = req.query;
@@ -641,9 +720,7 @@ exports.addExpenseData = async (req, res) => {
 
         // Create unique key: serviceDate + serviceType
         const existingServiceKeys = new Set(
-          amcRecord?.amcExpense?.map(
-            (e) => `${e.serviceDate}-${e.serviceType}`
-          )
+          amcRecord?.amcExpense?.map((e) => `${e.serviceDate}-${e.serviceType}`)
         );
 
         // Filter unique services only
@@ -663,8 +740,12 @@ exports.addExpenseData = async (req, res) => {
         // Remove FREE + PMS from BOTH arrays
         // ======================================
 
-        let upcoming = [...(amcRecord.vehicleDetails.custUpcomingService || [])];
-        let extUpcoming = [...(amcRecord.extendedPolicy?.upcomingPackage || [])];
+        let upcoming = [
+          ...(amcRecord.vehicleDetails.custUpcomingService || []),
+        ];
+        let extUpcoming = [
+          ...(amcRecord.extendedPolicy?.upcomingPackage || []),
+        ];
 
         // Normalize strings: lowercase + collapse spaces
         const normalize = (str) =>
@@ -672,11 +753,9 @@ exports.addExpenseData = async (req, res) => {
 
         // Helper: remove matching service from given arr
         const removeService = (arr, incoming) => {
-          const idx = arr.findIndex(
-            (x) => normalize(x) === incoming
-          );
+          const idx = arr.findIndex((x) => normalize(x) === incoming);
           if (idx !== -1) {
-            arr.splice(idx, 1);   // remove only FIRST matched → maintains order
+            arr.splice(idx, 1); // remove only FIRST matched → maintains order
             return true;
           }
           return false;
@@ -729,7 +808,6 @@ exports.addExpenseData = async (req, res) => {
     });
   }
 };
-
 
 exports.getamcStats = async (req, res) => {
   try {
@@ -798,9 +876,13 @@ exports.getamcStats = async (req, res) => {
           if (count > 7) return;
 
           const suffix =
-            count === 1 ? "1st" :
-            count === 2 ? "2nd" :
-            count === 3 ? "3rd" : `${count}th`;
+            count === 1
+              ? "1st"
+              : count === 2
+              ? "2nd"
+              : count === 3
+              ? "3rd"
+              : `${count}th`;
 
           key = `${suffix} Preventive Maintenance Service (PMS)`;
         }
@@ -813,9 +895,13 @@ exports.getamcStats = async (req, res) => {
           if (count > 5) return;
 
           const suffix =
-            count === 1 ? "1st" :
-            count === 2 ? "2nd" :
-            count === 3 ? "3rd" : `${count}th`;
+            count === 1
+              ? "1st"
+              : count === 2
+              ? "2nd"
+              : count === 3
+              ? "3rd"
+              : `${count}th`;
 
           key = `${suffix} Free Service`;
         }
@@ -829,15 +915,17 @@ exports.getamcStats = async (req, res) => {
     const sortedOutput = {};
 
     const freeOrder = ["1st", "2nd", "3rd", "4th", "5th"];
-    freeOrder.forEach(num => {
+    freeOrder.forEach((num) => {
       const key = `${num} Free Service`;
-      if (serviceTypeAmount[key]) sortedOutput[key] = formatNumberStats(serviceTypeAmount[key]);
+      if (serviceTypeAmount[key])
+        sortedOutput[key] = formatNumberStats(serviceTypeAmount[key]);
     });
 
     const pmsOrder = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th"];
-    pmsOrder.forEach(num => {
+    pmsOrder.forEach((num) => {
       const key = `${num} Preventive Maintenance Service (PMS)`;
-      if (serviceTypeAmount[key]) sortedOutput[key] = formatNumberStats(serviceTypeAmount[key]);
+      if (serviceTypeAmount[key])
+        sortedOutput[key] = formatNumberStats(serviceTypeAmount[key]);
     });
 
     // ------------------ RESPONSE ------------------
@@ -852,7 +940,6 @@ exports.getamcStats = async (req, res) => {
 
       serviceTypeAmount: sortedOutput,
     });
-
   } catch (error) {
     console.error("Error fetching AMC stats:", error);
     return res.status(500).json({
@@ -861,7 +948,6 @@ exports.getamcStats = async (req, res) => {
     });
   }
 };
-
 
 exports.getamcAssuredStats = async (req, res) => {
   try {
@@ -932,13 +1018,11 @@ exports.getamcAssuredStats = async (req, res) => {
 
 exports.downloadAmcCsv = async (req, res) => {
   try {
-    let query = {
-      $and: [{ isDisabled: { $ne: true } }],
-    };
-
-    const data = await AMCs.find(query);
+    // Fetch all non-disabled AMC records
+    const data = await AMCs.find({ isDisabled: { $ne: true } });
 
     const csvData = data.map((policy) => {
+      // Compute totals from amcExpense
       const totals = policy?.amcExpense?.reduce(
         (acc, item) => {
           acc.parts += Number(item?.partsPrice || 0);
@@ -948,14 +1032,42 @@ exports.downloadAmcCsv = async (req, res) => {
         },
         { parts: 0, vas: 0, labour: 0 }
       );
-       let availableCredit = "";
 
-  if (Array.isArray(policy.vehicleDetails.custUpcomingService)) {
-    availableCredit = policy.vehicleDetails.custUpcomingService.at(-1) || "";
-  } else {
-    availableCredit = policy.vehicleDetails.custUpcomingService || "";
-  }
+      // Get latest approved extended policy
+      let latestApprovedExt = null;
+      if (Array.isArray(policy.extendedPolicy)) {
+        const approvedPolicies = policy.extendedPolicy
+          .filter((x) => x.extendedStatus === "approved")
+          .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
 
+        latestApprovedExt = approvedPolicies[0] || null;
+      }
+
+      // Compute availableCredit list: combine upcomingService + latest approved extendedPolicy upcomingPackage
+      let upcomingServiceList = [];
+      if (Array.isArray(policy.vehicleDetails.custUpcomingService)) {
+        upcomingServiceList = policy.vehicleDetails.custUpcomingService;
+      } else if (policy.vehicleDetails.custUpcomingService) {
+        upcomingServiceList = [policy.vehicleDetails.custUpcomingService];
+      }
+
+      const approvedUpcomingFromExt = Array.isArray(latestApprovedExt?.upcomingPackage)
+        ? latestApprovedExt.upcomingPackage
+        : [];
+
+      const availableCreditList = [...upcomingServiceList, ...approvedUpcomingFromExt];
+      const availableCredit = availableCreditList.join(", ");
+
+      // Compute totalCredit: existing totalCredit + latest approved upcomingPackage
+      let totalCreditList = Array.isArray(policy.totalCredit)
+        ? [...policy.totalCredit]
+        : [];
+
+      if (approvedUpcomingFromExt.length > 0) {
+        totalCreditList.push(...approvedUpcomingFromExt);
+      }
+
+      const totalCreditData = totalCreditList.join(", ");
 
       return {
         "Customer Name": policy.customerDetails.customerName || "",
@@ -970,10 +1082,8 @@ exports.downloadAmcCsv = async (req, res) => {
         "Agreement Period": policy.vehicleDetails.agreementPeriod || "",
         "Agreement Start Date": policy.vehicleDetails.agreementStartDate || "",
         "Agreement Valid Date": policy.vehicleDetails.agreementValidDate || "",
-        "Agreement Start Milage":
-          policy.vehicleDetails.agreementStartMilage || "",
-        "Agreement Valid Milage":
-          policy.vehicleDetails.agreementValidMilage || "",
+        "Agreement Start Milage": policy.vehicleDetails.agreementStartMilage || "",
+        "Agreement Valid Milage": policy.vehicleDetails.agreementValidMilage || "",
         "Maximum Valid PMS": policy.vehicleDetails.MaximumValidPMS || "",
         "Dealer Location": policy.vehicleDetails.dealerLocation || "",
         "Total Price": policy.vehicleDetails.total || "",
@@ -981,64 +1091,35 @@ exports.downloadAmcCsv = async (req, res) => {
         "RM Employee Id": policy.vehicleDetails.rmEmployeeId || "",
         "RM Email": policy.vehicleDetails.rmEmail || "",
         "GM Email": policy.vehicleDetails.gmEmail || "",
-
         "Current Status": policy.amcStatus || "",
-        "Available Credit": availableCredit,
+        "Available Credit": availableCredit || "",
+        "Total Credit": totalCreditData || "",
         "Parts Price": totals.parts || "",
         "Vas Price": totals.vas || "",
         "Labour Price": totals.labour || "",
       };
     });
 
-    const csvDataString = json2csv(csvData, {
-      fields: [
-        "Customer Name",
-        "Email",
-        "Pan Number",
-        "Address",
-        "Contact Number",
-        "Gst Number",
-        "Vehicle Model",
-        "Vin Number",
-        "Fuel Type",
-        "Agreement Period",
-        "Agreement Start Date",
-        "Agreement Valid Date",
-        "Agreement Start Milage",
-        "Agreement Valid Milage",
-        "Maximum Valid PMS",
-        "Dealer Location",
-        "Total Price",
-        "Regional Manager Name",
-        "RM Employee Id",
-        "RM Email",
-        "GM Email",
-        "Current Status",
-        "Available Credit",
-        "Parts Price",
-        "Vas Price",
-        "Labour Price",
-      ],
-    });
+    // Convert JSON to CSV
+    const json2csv = new Parser();
+    const csvDataString = json2csv.parse(csvData);
 
+    // Prepare file path
     const folderPath = path.join(__dirname, "..", "csv");
     const filePath = path.join(folderPath, "exportedData.csv");
 
-    if (!fs.existsSync(folderPath)) {
-      fs.mkdirSync(folderPath);
-    }
+    if (!fs.existsSync(folderPath)) fs.mkdirSync(folderPath);
 
     fs.writeFileSync(filePath, csvDataString);
 
+    // Send file to client and delete after sending
     res.download(filePath, "amcData.csv", (err) => {
       if (err) {
         console.error("Error sending file:", err);
         res.status(500).send("Internal Server Error");
       } else {
         fs.unlink(filePath, (unlinkErr) => {
-          if (unlinkErr) {
-            console.error("Error deleting file:", unlinkErr);
-          }
+          if (unlinkErr) console.error("Error deleting file:", unlinkErr);
         });
       }
     });

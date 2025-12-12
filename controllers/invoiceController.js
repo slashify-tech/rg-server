@@ -13,14 +13,12 @@ const User = require("../model/User");
 const EwPolicy = require("../model/EwModel");
 const { default: mongoose } = require("mongoose");
 exports.addInvoice = async (req, res) => {
-  const {serviceId, invoiceType, createdBy, ...payload } = req.body;
+  const { serviceId, invoiceType, createdBy, ...payload } = req.body;
   const vinNumber = req.body.vehicleDetails.vinNumber;
   const rmEmail = req.body.vehicleDetails.rmEmail;
   const gmEmail = req.body.vehicleDetails.gmEmail;
- 
-  try {
-  
 
+  try {
     let prefix;
     let serviceType;
     let counterField;
@@ -74,20 +72,43 @@ exports.addInvoice = async (req, res) => {
     let pdfBuybackBuffer;
     let pdfEwPolicyBuffer;
     let pdfAmcBuffer;
-    
+
     if (invoiceTypeData === "amc") {
-      amcData = await AMCs.findOne({  _id: new mongoose.Types.ObjectId(serviceId)   });
+      amcData = await AMCs.findOne({
+        _id: new mongoose.Types.ObjectId(serviceId),
+      }).lean();
+
+      // Make sure extendedPolicy sent to template is ONLY latest approved
+      if (
+        amcData &&
+        amcData.extendedPolicy &&
+        amcData.extendedPolicy.length > 0
+      ) {
+        const approvedList = amcData.extendedPolicy.filter(
+          (p) => p.extendedStatus === "approved"
+        );
+
+        // Get MOST RECENT approved entry
+        const latestApproved =
+          approvedList.length > 0
+            ? approvedList[approvedList.length - 1]
+            : null;
+
+        amcData.extendedPolicy = latestApproved; // Final cleaned data
+      }
+
       const amcHTML = await renderEmailTemplate(
         amcData,
         "../Templates/AmcTemplate.ejs"
       );
+
       pdfAmcBuffer = await generatePdf(amcHTML, "pdfAmc");
       amcFileName = `${amcData.vehicleDetails.vinNumber}_${
         amcData.customerDetails.customerName || "AMC"
       }.pdf`;
     } else if (invoiceTypeData === "buyback") {
       buyBackData = await BuyBacks.findOne({
-        _id: new mongoose.Types.ObjectId(serviceId) 
+        _id: new mongoose.Types.ObjectId(serviceId),
       });
       const buyBackHTML = await renderEmailTemplate(
         buyBackData,
@@ -99,14 +120,13 @@ exports.addInvoice = async (req, res) => {
       }.pdf`;
     } else if (invoiceTypeData === "ewpolicy") {
       ewPolicyData = await EwPolicy.findOne({
-        _id: new mongoose.Types.ObjectId(serviceId) 
+        _id: new mongoose.Types.ObjectId(serviceId),
       });
       // console.log(ewPolicyData, "ewDatacheck")
       const ewPolicyHTML = await renderEmailTemplate(
         ewPolicyData,
         "../Templates/EwPolicyTemplate.ejs",
-          ewPolicyData.ewDetails && "ewpolicy"
-     
+        ewPolicyData.ewDetails && "ewpolicy"
       );
       pdfEwPolicyBuffer = await generatePdf(ewPolicyHTML, "pdfEwPolicy");
       ewPolicyFileName = `${ewPolicyData?.vehicleDetails?.vinNumber}_${
@@ -114,13 +134,12 @@ exports.addInvoice = async (req, res) => {
       }.pdf`;
     }
     const invoiceData = await Invoice.findOne({
-      serviceId: new mongoose.Types.ObjectId(serviceId) 
+      serviceId: new mongoose.Types.ObjectId(serviceId),
     });
     const invoiceHTML = await renderEmailTemplate(
       invoiceData,
       "../Templates/InvoicePdf.ejs",
       invoiceTypeData
-
     );
     const pdfInvoiceBuffer = await generatePdf(invoiceHTML, "pdfInvoice");
 
@@ -128,16 +147,19 @@ exports.addInvoice = async (req, res) => {
       invoiceData.customerName || "Invoice"
     }.pdf`;
     const policyData =
-    invoiceTypeData === "amc"
-      ? amcData
-      : invoiceTypeData === "buyback"
-      ? buyBackData
-      : invoiceTypeData === "ewpolicy"
-      ? ewPolicyData
-      : null;
+      invoiceTypeData === "amc"
+        ? amcData
+        : invoiceTypeData === "buyback"
+        ? buyBackData
+        : invoiceTypeData === "ewpolicy"
+        ? ewPolicyData
+        : null;
     const policyType =
       invoiceTypeData === "amc" && policyData.customerDetails.amcType === "AMC"
-        ? "AMC" :     invoiceTypeData === "amc" && policyData.customerDetails.amcType === "AMC Assured" ? "AMC Assured"
+        ? "AMC"
+        : invoiceTypeData === "amc" &&
+          policyData.customerDetails.amcType === "AMC Assured"
+        ? "AMC Assured"
         : invoiceTypeData === "buyback"
         ? "Buyback"
         : invoiceTypeData === "ewpolicy"
@@ -159,7 +181,7 @@ exports.addInvoice = async (req, res) => {
         : invoiceTypeData === "ewpolicy"
         ? ewPolicyFileName
         : null;
- 
+
     const agentData = await User.findOne({ _id: policyData.createdBy });
     // await sendDocEmail(
     //   policyType,
@@ -177,8 +199,9 @@ exports.addInvoice = async (req, res) => {
     //    policyData.customId
 
     // );
-    const emailData = agentData?.email || policyData.vehicleDetails?.salesTeamEmail
-        // console.log(emailData, "test");
+    const emailData =
+      agentData?.email || policyData.vehicleDetails?.salesTeamEmail;
+    // console.log(emailData, "test");
 
     await sendCustomerDocEmail(
       invoiceData.billingDetail.customerName,
@@ -195,9 +218,8 @@ exports.addInvoice = async (req, res) => {
       gmEmail,
       emailData,
       invoiceTypeData === "ewpolicy"
-      ? "360 CAR PROTECT INDIA LLP"
-      : "Raam4Wheelers LLP",
-   
+        ? "360 CAR PROTECT INDIA LLP"
+        : "Raam4Wheelers LLP"
     );
     res
       .status(201)
@@ -211,7 +233,7 @@ exports.addInvoice = async (req, res) => {
 exports.editInvoice = async (req, res) => {
   const { id } = req.query;
   const { serviceId, ...payload } = req.body;
-  console.log(serviceId, "testId")
+  console.log(serviceId, "testId");
   const { rmEmail, gmEmail, vinNumber } = req.body.vehicleDetails || {};
   try {
     if (!id) {
@@ -228,8 +250,6 @@ exports.editInvoice = async (req, res) => {
     }
 
     const invoiceTypeData = existingInvoice.invoiceType.toLowerCase();
-   
-       
 
     Object.assign(existingInvoice, payload);
 
@@ -246,20 +266,41 @@ exports.editInvoice = async (req, res) => {
       let pdfEwPolicyBuffer;
       let pdfAmcBuffer;
       if (invoiceTypeData === "amc") {
-        amcData = await AMCs.findOne({ _id: new mongoose.Types.ObjectId(serviceId) }).lean();
-    console.log(amcData, "datacheck")
+        amcData = await AMCs.findOne({
+          _id: new mongoose.Types.ObjectId(serviceId),
+        }).lean();
+
+        // Make sure extendedPolicy sent to template is ONLY latest approved
+        if (
+          amcData &&
+          amcData.extendedPolicy &&
+          amcData.extendedPolicy.length > 0
+        ) {
+          const approvedList = amcData.extendedPolicy.filter(
+            (p) => p.extendedStatus === "approved"
+          );
+
+          // Get MOST RECENT approved entry
+          const latestApproved =
+            approvedList.length > 0
+              ? approvedList[approvedList.length - 1]
+              : null;
+
+          amcData.extendedPolicy = latestApproved; // Final cleaned data
+        }
 
         const amcHTML = await renderEmailTemplate(
           amcData,
           "../Templates/AmcTemplate.ejs"
         );
+
         pdfAmcBuffer = await generatePdf(amcHTML, "pdfAmc");
         amcFileName = `${amcData.vehicleDetails.vinNumber}_${
           amcData.customerDetails.customerName || "AMC"
         }.pdf`;
       } else if (invoiceTypeData === "buyback") {
         buyBackData = await BuyBacks.findOne({
-          _id: new mongoose.Types.ObjectId(serviceId) 
+          _id: new mongoose.Types.ObjectId(serviceId),
         });
         const buyBackHTML = await renderEmailTemplate(
           buyBackData,
@@ -271,22 +312,23 @@ exports.editInvoice = async (req, res) => {
         }.pdf`;
       } else if (invoiceTypeData === "ewpolicy") {
         ewPolicyData = await EwPolicy.findOne({
-          _id: new mongoose.Types.ObjectId(serviceId) 
+          _id: new mongoose.Types.ObjectId(serviceId),
         });
         const ewPolicyHTML = await renderEmailTemplate(
           ewPolicyData,
           "../Templates/EwPolicyTemplate.ejs",
           ewPolicyData.ewDetails && "ewpolicy"
-        
         );
         pdfEwPolicyBuffer = await generatePdf(ewPolicyHTML, "pdfEwPolicy");
         ewPolicyFileName = `${ewPolicyData?.vehicleDetails?.vinNumber}_${
           ewPolicyData?.customerDetails?.customerName || "EwPolicy"
         }.pdf`;
       }
-      const invoiceData = await Invoice.findOne({
-         serviceId: new mongoose.Types.ObjectId(serviceId) 
-      });
+    const invoiceData = await Invoice.findOne({
+  serviceId: new mongoose.Types.ObjectId(serviceId),
+})
+  .sort({ createdAt: -1 }); 
+
       const invoiceHTML = await renderEmailTemplate(
         invoiceData,
         "../Templates/InvoicePdf.ejs",
@@ -298,16 +340,20 @@ exports.editInvoice = async (req, res) => {
         invoiceData.customerName || "Invoice"
       }.pdf`;
       const policyData =
-      invoiceTypeData === "amc"
-        ? amcData
-        : invoiceTypeData === "buyback"
-        ? buyBackData
-        : invoiceTypeData === "ewpolicy"
-        ? ewPolicyData
-        : null;
+        invoiceTypeData === "amc"
+          ? amcData
+          : invoiceTypeData === "buyback"
+          ? buyBackData
+          : invoiceTypeData === "ewpolicy"
+          ? ewPolicyData
+          : null;
       const policyType =
-         invoiceTypeData === "amc" && policyData.customerDetails.amcType === "AMC"
-        ? "AMC" :     invoiceTypeData === "amc" && policyData.customerDetails.amcType === "AMC Assured" ? "AMC Assured"
+        invoiceTypeData === "amc" &&
+        policyData.customerDetails.amcType === "AMC"
+          ? "AMC"
+          : invoiceTypeData === "amc" &&
+            policyData.customerDetails.amcType === "AMC Assured"
+          ? "AMC Assured"
           : invoiceTypeData === "buyback"
           ? "Buyback"
           : invoiceTypeData === "ewpolicy"
@@ -329,7 +375,7 @@ exports.editInvoice = async (req, res) => {
           : invoiceTypeData === "ewpolicy"
           ? ewPolicyFileName
           : null;
-  
+
       const agentData = await User.findOne({ _id: policyData.createdBy });
 
       // await sendDocEmail(

@@ -116,7 +116,7 @@
 <% } %>
 
         <p>
-          Agreement Period: <%= (data.amcStatus === "approved" && data.extendedPolicy?.extendedPolicyPeriod)
+          Agreement Period: <%= (data.extendedPolicy?.extendedPolicyPeriod)
       ? data.extendedPolicy.extendedPolicyPeriod
       : (data.vehicleDetails?.agreementPeriod || "NA")
 %>
@@ -127,7 +127,7 @@
           Agreement Start date: <%= data.vehicleDetails.agreementStartDate %>
         </p>
         <p>
-          Agreement Valid Date: <%= (data.amcStatus === "approved" && data.extendedPolicy?.validDate)
+          Agreement Valid Date: <%= (data.extendedPolicy?.validDate)
       ? data.extendedPolicy.validDate
       : (data.vehicleDetails?.agreementValidDate || "NA")
 %>
@@ -140,7 +140,7 @@
 
         </p>
         <p>
-          Agreement Valid Milage: <%= (data.amcStatus === "approved" && data.extendedPolicy?.validMileage)
+          Agreement Valid Milage: <%= (data.extendedPolicy?.validMileage)
       ? data.extendedPolicy.validMileage
       : (data.vehicleDetails?.agreementValidMilage || "NA")
 %>
@@ -157,9 +157,15 @@ kms/Running of the vehicle, whichever
  <% if (data.customerDetails.amcType === "AMC Assured") { %>
         <p style="margin: 0; font-size: 14px; line-height: 1.6;">
           <br />
-          AMC Amount: <span style="text-decoration: underline;"><%= (parseFloat(data.vehicleDetails.total) / 1.3).toFixed(2) %></span>( Refundable only if the vehicle is sold to Raam within the Agreement Period)
+          AMC Amount: <span style="text-decoration: underline;"> <%= (data.showAmount / 1.3).toFixed(2) %>
+ %></span>( Refundable only if the vehicle is sold to Raam within the Agreement Period)
           <br /><br />
-          Assured AMC Premium Amount: INR <span style="text-decoration: underline;"><%= (parseFloat(data.vehicleDetails.total) - (parseFloat(data.vehicleDetails.total) / 1.3)).toFixed(2) %></span>
+          Assured AMC Premium Amount: INR <span style="text-decoration: underline;">
+            <%= (
+                parseFloat(data.showAmount) -
+                parseFloat(data.showAmount) / 1.3
+              ).toFixed(2) %>
+</span>
           (Refundable only if Raam is unable to match the price offered to you in the market before selling the vehicle, and Raam is unable or unwilling to match the offer within the Agreement Period).
         </p>
       <% } %>

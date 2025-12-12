@@ -150,6 +150,11 @@ const extendedPolicySchema = mongoose.Schema({
   submittedAt: Date,
   validDate: String,
   validMileage: String,
+  extendedStatus: {
+      type: String,
+      enum: ["pending", "approved"],
+      default: "pending",
+    },
   upcomingPackage: {
     type: Array,
   },
@@ -166,11 +171,17 @@ const AMCschema = mongoose.Schema(
   {
     customerDetails: customerPersonalDetais,
     vehicleDetails: amcVehicleDetailSchema,
-    extendedPolicy: extendedPolicySchema,
+    extendedPolicy: {
+      type: [extendedPolicySchema],
+      default: [],
+    },
     amcAssuredAdditionalData: amcAssuredSchema,
     amcExpense: [uploadDataSchema],
     amcCredit: {
       type: String,
+    },
+    totalCredit: {
+      type: Array,
     },
     amcStatus: {
       type: String,

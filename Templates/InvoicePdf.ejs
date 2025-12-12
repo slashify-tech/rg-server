@@ -150,12 +150,10 @@
             <td style="padding: 5px;">1</td>
             <td style="padding: 5px;">Basic Price</td>
             <td style="padding: 5px;">
-              <%= (data.amcStatus === "approved" && data.extendedPolicy?.additionalPrice)
-      ? data.extendedPolicy.additionalPrice : totalPrice %>
+              <%= totalPrice %>
             </td>
             <td style="padding: 5px;">
-              <%= (data.amcStatus === "approved" && data.extendedPolicy?.additionalPrice)
-      ? data.extendedPolicy.additionalPrice : totalPrice %>
+              <%= totalPrice %>
             </td>
 
           </tr>
@@ -192,20 +190,21 @@
                   Basic Price after discount
                 </td>
                 <td style="padding: 3px;">
-                  <%=  (data.amcStatus === "approved" && data.extendedPolicy?.additionalPrice)
-      ? data.extendedPolicy.additionalPrice : totalPrice %>
+                  <%=  totalPrice %>
                 </td>
               </tr>
               <tr>
                 <td style="padding: 3px; font-weight: bold;">CGST@ 9%</td>
                 <td style="padding: 3px;">
-                  <%= data.vehicleDetails.cgst %>
+                <%= cgstAmount %>
+
                 </td>
               </tr>
               <tr>
                 <td style="padding: 3px; font-weight: bold;">SGST@ 9%</td>
                 <td style="padding: 3px;">
-                  <%= data.vehicleDetails.sgst %>
+                 <%= sgstAmount %>
+
                 </td>
               </tr>
               <tr>
@@ -217,10 +216,7 @@
                   Total
                 </td>
                 <td style="border: 1px solid #000; padding: 8px;">
-<%= (data.amcStatus === "approved" && data.extendedPolicy?.additionalPrice)
-      ? (Number(data.extendedPolicy.additionalPrice) * 1.18).toFixed(2)
-      : (data.vehicleDetails?.totalAmount || "NA")
-%>
+<%= afterGstAmount %>
 
                 </td>
               </tr>
