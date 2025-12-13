@@ -734,7 +734,6 @@ exports.addExpenseData = async (req, res) => {
       });
     }
 
-    // Map serviceData by VIN
     const serviceDataMap = new Map(
       serviceData.map((entry) => [entry.serviceVinNumber, entry.expenses])
     );
@@ -744,12 +743,12 @@ exports.addExpenseData = async (req, res) => {
         const vinNumber = amcRecord.vehicleDetails.vinNumber;
         const expenses = serviceDataMap.get(vinNumber) || [];
 
-        // Create unique key: serviceDate + serviceType
         const existingServiceKeys = new Set(
-          amcRecord?.amcExpense?.map((e) => `${e.serviceDate}-${e.serviceType}`)
+          amcRecord?.amcExpense?.map(
+            (e) => `${e.serviceDate}-${e.serviceType}`
+          )
         );
 
-        // Filter unique services only
         const uniqueServices = expenses.filter((e) => {
           const key = `${e.serviceDate}-${e.serviceType}`;
           return !existingServiceKeys.has(key);
@@ -761,54 +760,85 @@ exports.addExpenseData = async (req, res) => {
           $push: { amcExpense: { $each: uniqueServices } },
         };
 
-        // ======================================
-        // NEW AMC CREDIT REMOVAL LOGIC (FINAL)
-        // Remove FREE + PMS from BOTH arrays
-        // ======================================
-
         let upcoming = [
           ...(amcRecord.vehicleDetails.custUpcomingService || []),
         ];
-        let extUpcoming = [
-          ...(amcRecord.extendedPolicy?.upcomingPackage || []),
-        ];
 
-        // Normalize strings: lowercase + collapse spaces
+        const latestExtIndex = [...(amcRecord.extendedPolicy || [])]
+          .map((p, i) => ({ p, i }))
+          .filter(({ p }) => p.extendedStatus === "approved")
+          .sort(
+            (a, b) =>
+              new Date(b.p.submittedAt) - new Date(a.p.submittedAt)
+          )[0]?.i;
+
+        let extUpcoming =
+          latestExtIndex !== undefined
+            ? [
+                ...(amcRecord.extendedPolicy[latestExtIndex]
+                  ?.upcomingPackage || []),
+              ]
+            : [];
+
         const normalize = (str) =>
           str?.toLowerCase().replace(/\s+/g, " ").trim();
 
-        // Helper: remove matching service from given arr
-        const removeService = (arr, incoming) => {
-          const idx = arr.findIndex((x) => normalize(x) === incoming);
+        const isPMS = (str) =>
+          /pms|preventive\s*maintenance/i.test(str || "");
+
+        const getOrdinal = (str) => {
+          const match = str?.match(/(\d+)(st|nd|rd|th)/i);
+          return match ? Number(match[1]) : Infinity;
+        };
+
+        const removeService = (arr, value) => {
+          const idx = arr.findIndex(
+            (x) => normalize(x) === normalize(value)
+          );
           if (idx !== -1) {
-            arr.splice(idx, 1); // remove only FIRST matched → maintains order
+            arr.splice(idx, 1);
             return true;
           }
           return false;
         };
 
-        // Loop through new services and remove from both lists
+        // 🔥 SEQUENCE-WISE CREDIT DEDUCTION
         uniqueServices.forEach((svc) => {
-          const incoming = normalize(svc.serviceType);
+          const incoming = svc.serviceType;
 
-          // Try removing from custUpcomingService
-          if (removeService(upcoming, incoming)) return;
+          // NON-PMS → normal removal
+          if (!isPMS(incoming)) {
+            if (removeService(upcoming, incoming)) return;
+            removeService(extUpcoming, incoming);
+            return;
+          }
 
-          // If not found there, remove from extendedPolicy.upcomingPackage
-          removeService(extUpcoming, incoming);
+          // PMS → deduct smallest available (1st → 2nd → ...)
+          const allPMS = [
+            ...upcoming.filter(isPMS).map((v) => ({ src: "cust", v })),
+            ...extUpcoming.filter(isPMS).map((v) => ({ src: "ext", v })),
+          ];
+
+          if (!allPMS.length) return;
+
+          allPMS.sort(
+            (a, b) => getOrdinal(a.v) - getOrdinal(b.v)
+          );
+
+          const toRemove = allPMS[0];
+
+          if (toRemove.src === "cust") {
+            removeService(upcoming, toRemove.v);
+          } else {
+            removeService(extUpcoming, toRemove.v);
+          }
         });
-const latestExtIndex = [...(amcRecord.extendedPolicy || [])]
-  .map((p, i) => ({ p, i }))
-  .filter(({ p }) => p.extendedStatus === "approved")
-  .sort(
-    (a, b) => new Date(b.p.submittedAt) - new Date(a.p.submittedAt)
-  )[0]?.i;
 
-        // Save updated arrays
         if (latestExtIndex !== undefined) {
           updateFields.$set = {
             "vehicleDetails.custUpcomingService": upcoming,
-            [`extendedPolicy.${latestExtIndex}.upcomingPackage`]: extUpcoming,
+            [`extendedPolicy.${latestExtIndex}.upcomingPackage`]:
+              extUpcoming,
           };
         } else {
           updateFields.$set = {
