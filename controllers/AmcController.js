@@ -231,7 +231,6 @@ exports.createExtendedPolicy = async (req, res) => {
       });
     }
 
-    // Find AMC by VIN number
     const AMCdata = await AMCs.findOne({
       "vehicleDetails.vinNumber": id,
     });
@@ -249,24 +248,17 @@ exports.createExtendedPolicy = async (req, res) => {
         : [];
     }
 
-   
-    if (edit === true) {
-      // Find latest pending extended policy
-      const pendingIndex = [...AMCdata.extendedPolicy]
-        .map((p, i) => ({ p, i }))
-        .filter(({ p }) => p.extendedStatus === "pending")
-        .sort(
-          (a, b) =>
-            new Date(b.p.submittedAt) - new Date(a.p.submittedAt)
-        )[0]?.i;
+    // Find latest pending policy index
+    const pendingIndex = [...AMCdata.extendedPolicy]
+      .map((p, i) => ({ p, i }))
+      .filter(({ p }) => p.extendedStatus === "pending")
+      .sort(
+        (a, b) =>
+          new Date(b.p.submittedAt) - new Date(a.p.submittedAt)
+      )[0]?.i;
 
-      if (pendingIndex === undefined) {
-        return res.status(400).json({
-          message: "No pending extended policy found to update.",
-        });
-      }
-
-      // Update the latest pending entry
+    if (edit === true && pendingIndex !== undefined) {
+      // ✅ Update latest pending
       AMCdata.extendedPolicy[pendingIndex] = {
         ...AMCdata.extendedPolicy[pendingIndex],
         extendedPolicyPeriod,
@@ -278,9 +270,10 @@ exports.createExtendedPolicy = async (req, res) => {
         openForm,
         updatedAt: new Date(),
       };
-    }
-   
-    else {
+    } else {
+      // ✅ Create new pending if:
+      // - edit === false
+      // - OR edit === true but no pending found
       AMCdata.extendedPolicy.push({
         extendedPolicyPeriod,
         additionalPrice,
@@ -300,14 +293,15 @@ exports.createExtendedPolicy = async (req, res) => {
     await AMCdata.save();
 
     return res.status(200).json({
-      message: edit
-        ? "Extended policy updated successfully"
-        : "Extended policy added successfully",
+      message:
+        edit && pendingIndex !== undefined
+          ? "Extended policy updated successfully"
+          : "Extended policy added successfully",
       data: AMCdata,
     });
   } catch (error) {
     console.error("Error creating/updating extended policy:", error);
-    res.status(500).json({
+    return res.status(500).json({
       message: "Internal Server Error",
       error: error.message,
     });
