@@ -253,8 +253,7 @@ exports.createExtendedPolicy = async (req, res) => {
       .map((p, i) => ({ p, i }))
       .filter(({ p }) => p.extendedStatus === "pending")
       .sort(
-        (a, b) =>
-          new Date(b.p.submittedAt) - new Date(a.p.submittedAt)
+        (a, b) => new Date(b.p.submittedAt) - new Date(a.p.submittedAt)
       )[0]?.i;
 
     if (edit === true && pendingIndex !== undefined) {
@@ -606,7 +605,7 @@ exports.amcDataById = async (req, res) => {
       showAmount =
         finalPolicy.additionalPrice || data?.vehicleDetails?.totalAmount || 0;
     } else {
-      showAmount = data?.vehicleDetails?.total|| 0;
+      showAmount = data?.vehicleDetails?.total || 0;
     }
 
     return res.status(200).json({
@@ -798,12 +797,24 @@ exports.addExpenseData = async (req, res) => {
           // If not found there, remove from extendedPolicy.upcomingPackage
           removeService(extUpcoming, incoming);
         });
+const latestExtIndex = [...(amcRecord.extendedPolicy || [])]
+  .map((p, i) => ({ p, i }))
+  .filter(({ p }) => p.extendedStatus === "approved")
+  .sort(
+    (a, b) => new Date(b.p.submittedAt) - new Date(a.p.submittedAt)
+  )[0]?.i;
 
         // Save updated arrays
-        updateFields.$set = {
-          "vehicleDetails.custUpcomingService": upcoming,
-          "extendedPolicy.upcomingPackage": extUpcoming,
-        };
+        if (latestExtIndex !== undefined) {
+          updateFields.$set = {
+            "vehicleDetails.custUpcomingService": upcoming,
+            [`extendedPolicy.${latestExtIndex}.upcomingPackage`]: extUpcoming,
+          };
+        } else {
+          updateFields.$set = {
+            "vehicleDetails.custUpcomingService": upcoming,
+          };
+        }
 
         return {
           updateOne: {
@@ -1078,11 +1089,16 @@ exports.downloadAmcCsv = async (req, res) => {
         upcomingServiceList = [policy.vehicleDetails.custUpcomingService];
       }
 
-      const approvedUpcomingFromExt = Array.isArray(latestApprovedExt?.upcomingPackage)
+      const approvedUpcomingFromExt = Array.isArray(
+        latestApprovedExt?.upcomingPackage
+      )
         ? latestApprovedExt.upcomingPackage
         : [];
 
-      const availableCreditList = [...upcomingServiceList, ...approvedUpcomingFromExt];
+      const availableCreditList = [
+        ...upcomingServiceList,
+        ...approvedUpcomingFromExt,
+      ];
       const availableCredit = availableCreditList.join(", ");
 
       // Compute totalCredit: existing totalCredit + latest approved upcomingPackage
@@ -1109,8 +1125,10 @@ exports.downloadAmcCsv = async (req, res) => {
         "Agreement Period": policy.vehicleDetails.agreementPeriod || "",
         "Agreement Start Date": policy.vehicleDetails.agreementStartDate || "",
         "Agreement Valid Date": policy.vehicleDetails.agreementValidDate || "",
-        "Agreement Start Milage": policy.vehicleDetails.agreementStartMilage || "",
-        "Agreement Valid Milage": policy.vehicleDetails.agreementValidMilage || "",
+        "Agreement Start Milage":
+          policy.vehicleDetails.agreementStartMilage || "",
+        "Agreement Valid Milage":
+          policy.vehicleDetails.agreementValidMilage || "",
         "Maximum Valid PMS": policy.vehicleDetails.MaximumValidPMS || "",
         "Dealer Location": policy.vehicleDetails.dealerLocation || "",
         "Total Price": policy.vehicleDetails.total || "",
