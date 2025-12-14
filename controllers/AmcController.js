@@ -741,6 +741,7 @@ exports.addExpenseData = async (req, res) => {
     const updates = amcRecords
       .map((amcRecord) => {
         const vinNumber = amcRecord.vehicleDetails.vinNumber;
+        const credits = amcRecord.vehicleDetails?.custUpcomingService || [];
         const expenses = serviceDataMap.get(vinNumber) || [];
 
         const existingServiceKeys = new Set(
@@ -748,7 +749,7 @@ exports.addExpenseData = async (req, res) => {
             (e) => `${e.serviceDate}-${e.serviceType}`
           )
         );
-        const creditStrings = amcRecord?.totalCredit?.map(
+        const creditStrings = credits?.map(
           (c) => c.credit // whatever field you're matching against
         ) || [];
         console.log("creditStrings",creditStrings);
