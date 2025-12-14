@@ -740,7 +740,6 @@ exports.addExpenseData = async (req, res) => {
 
     const updates = amcRecords
       .map((amcRecord) => {
-        console.log("amcRecord", amcRecord);
         const vinNumber = amcRecord.vehicleDetails.vinNumber;
         const credits = amcRecord.vehicleDetails?.custUpcomingService || [];
         const expenses = serviceDataMap.get(vinNumber) || [];
@@ -750,9 +749,7 @@ exports.addExpenseData = async (req, res) => {
             (e) => `${e.serviceDate}-${e.serviceType}`
           )
         );
-        const creditStrings = credits?.map(
-          (c) => c.credit // whatever field you're matching against
-        ) || [];
+        const creditStrings = credits
         console.log("creditStrings",creditStrings);
         const uniqueServices = expenses.filter((e) => {
           const key = `${e.serviceDate}-${e.serviceType}`;
