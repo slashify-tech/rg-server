@@ -743,6 +743,23 @@ exports.addExpenseData = async (req, res) => {
         const vinNumber = amcRecord.vehicleDetails.vinNumber;
         const expenses = serviceDataMap.get(vinNumber) || [];
 
+        const existingServiceKeys = new Set(
+          amcRecord?.amcExpense?.map(
+            (e) => `${e.serviceDate}-${e.serviceType}`
+          )
+        );
+
+        const uniqueServices = expenses.filter((e) => {
+          const key = `${e.serviceDate}-${e.serviceType}`;
+          return !existingServiceKeys.has(key);
+        });
+
+        if (uniqueServices.length === 0) return null;
+
+        const updateFields = {
+          $push: { amcExpense: { $each: uniqueServices } },
+        };
+
         let upcoming = [
           ...(amcRecord.vehicleDetails.custUpcomingService || []),
         ];
@@ -769,9 +786,6 @@ exports.addExpenseData = async (req, res) => {
         const isPMS = (str) =>
           /pms|preventive\s*maintenance/i.test(str || "");
 
-        const isFreeService = (str) =>
-          /free\s*service/i.test(str || "");
-
         const getOrdinal = (str) => {
           const match = str?.match(/(\d+)(st|nd|rd|th)/i);
           return match ? Number(match[1]) : Infinity;
@@ -788,54 +802,18 @@ exports.addExpenseData = async (req, res) => {
           return false;
         };
 
-        const existingServiceKeys = new Set(
-          amcRecord?.amcExpense?.map(
-            (e) => `${e.serviceDate}-${e.serviceType}`
-          )
-        );
-
-        // ✅ STRICT VALIDATION HERE
-        const uniqueServices = expenses.filter((e) => {
-          const key = `${e.serviceDate}-${e.serviceType}`;
-          if (existingServiceKeys.has(key)) return false;
-
-          const incoming = normalize(e.serviceType);
-
-          // 🚫 FREE SERVICE → must exist in DB credits
-          if (isFreeService(incoming)) {
-            const existsInCust = upcoming.some(
-              (s) => normalize(s) === incoming
-            );
-            const existsInExt = extUpcoming.some(
-              (s) => normalize(s) === incoming
-            );
-
-            if (!existsInCust && !existsInExt) {
-              return false; // ❌ block invalid free service
-            }
-          }
-
-          return true;
-        });
-
-        if (uniqueServices.length === 0) return null;
-
-        const updateFields = {
-          $push: { amcExpense: { $each: uniqueServices } },
-        };
-
-        // 🔥 CREDIT DEDUCTION
+        // 🔥 SEQUENCE-WISE CREDIT DEDUCTION
         uniqueServices.forEach((svc) => {
           const incoming = svc.serviceType;
 
-          // FREE / NORMAL SERVICE
+          // NON-PMS → normal removal
           if (!isPMS(incoming)) {
             if (removeService(upcoming, incoming)) return;
             removeService(extUpcoming, incoming);
             return;
           }
 
-          // PMS → sequence-wise
+          // PMS → deduct smallest available (1st → 2nd → ...)
           const allPMS = [
             ...upcoming.filter(isPMS).map((v) => ({ src: "cust", v })),
             ...extUpcoming.filter(isPMS).map((v) => ({ src: "ext", v })),
@@ -898,7 +876,6 @@ exports.addExpenseData = async (req, res) => {
     });
   }
 };
-
 
 exports.getamcStats = async (req, res) => {
   try {
