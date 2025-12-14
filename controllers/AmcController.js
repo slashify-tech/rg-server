@@ -838,19 +838,22 @@ exports.addExpenseData = async (req, res) => {
           // If multiple dates: take one per date, up to creditCount
           // If same date: take all with that date
           if (expensesByDate.size > 1) {
-            // Different dates - take one expense from each date, up to creditCount
+            // Different dates - take all expenses from each date, up to creditCount
             let addedCount = 0;
             for (const [date, expenseList] of expensesByDate) {
               if (addedCount >= creditCount) break;
               
-              // Take first expense from this date
-              const expense = expenseList[0];
-              const key = `${expense.serviceDate}-${expense.serviceType}`;
-              if (!usedExpenseKeys.has(key)) {
-                uniqueServices.push(expense);
-                usedExpenseKeys.add(key);
-                addedCount++;
+              for (const expense of expenseList) {
+                if (addedCount >= creditCount) break;
+                
+                const key = `${expense.serviceDate}-${expense.serviceType}`;
+                if (!usedExpenseKeys.has(key)) {
+                  uniqueServices.push(expense);
+                  usedExpenseKeys.add(key);
+                }
               }
+              // Increment addedCount after all expenses from this date are processed
+              addedCount++;
             }
           } else {
             // Same date (or single expense) - take all expenses with that date
