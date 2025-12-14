@@ -745,37 +745,118 @@ exports.addExpenseData = async (req, res) => {
         const expenses = serviceDataMap.get(vinNumber) || [];
 
         const existingServiceKeys = new Set(
-          amcRecord?.amcExpense?.map(
-            (e) => `${e.serviceDate}-${e.serviceType}`
-          )
+          amcRecord?.amcExpense?.map((e) => `${e.serviceDate}-${e.serviceType}`)
         );
-const creditStrings = [
-  ...new Set(
-    credits.map(str => {
-      if (str.includes("PMS")) {
-        // Remove "1st ", "2nd ", "3rd ", "4th ", etc. ONLY for PMS
-        return str.replace(/^\d+(st|nd|rd|th)\s+/i, "");
-      }
-      return str?.trim(); // keep original for non-PMS strings
-    })
-  )
-];
-        console.log("creditStrings",creditStrings);
-        const uniqueServices = expenses.filter((e) => {
+        
+        const normalize = (str) =>
+          str?.toLowerCase().replace(/\s+/g, " ").trim();
+
+        // Normalize credits for matching
+        const normalizedCredits = credits.map((str) => {
+          if (str.includes("PMS")) {
+            // Remove "1st ", "2nd ", "3rd ", "4th ", etc. ONLY for PMS
+            return normalize(str.replace(/^\d+(st|nd|rd|th)\s+/i, ""));
+          }
+          return normalize(str);
+        });
+
+        console.log("normalizedCredits", normalizedCredits);
+
+        // Filter expenses that match credits and are not already existing
+        const matchingExpenses = expenses.filter((e) => {
           const key = `${e.serviceDate}-${e.serviceType}`;
+          
+          // Skip if already exists
+          if (existingServiceKeys.has(key)) return false;
 
-          console.log("key : " , key)
-
-          console.log("creditStrings -> ",creditStrings.some(str => key.includes(str?.trim())));
-          console.log("existingServiceKeys -> ",existingServiceKeys.has(key));
-  
-          return (
-            creditStrings.some(str => key.includes(str?.trim())) &&   // must match credit
-            !existingServiceKeys.has(key) 
+          // Check if service type matches any credit
+          const normalizedServiceType = normalize(e.serviceType);
+          return normalizedCredits.some((credit) => 
+            normalizedServiceType.includes(credit) || credit.includes(normalizedServiceType)
           );
         });
 
-        console.log("uniqueServices", uniqueServices)
+        console.log("matchingExpenses", matchingExpenses);
+
+        // Group matching expenses by normalized service type
+        const expensesByType = new Map();
+        matchingExpenses.forEach((expense) => {
+          const normalizedType = normalize(expense.serviceType);
+          if (!expensesByType.has(normalizedType)) {
+            expensesByType.set(normalizedType, []);
+          }
+          expensesByType.get(normalizedType).push(expense);
+        });
+        console.log("matchingExpenses", matchingExpenses);
+
+        // Group credits by normalized service type (to handle multiple credits of same type)
+        const creditsByType = new Map();
+        normalizedCredits.forEach((credit) => {
+          if (!creditsByType.has(credit)) {
+            creditsByType.set(credit, 0);
+          }
+          creditsByType.set(credit, creditsByType.get(credit) + 1);
+        });
+
+        console.log("creditsByType", creditsByType);
+
+        // For each unique credit type, select matching expenses based on date logic
+        const uniqueServices = [];
+        const usedExpenseKeys = new Set();
+
+        creditsByType.forEach((creditCount, creditType) => {
+          // Find all expenses that match this credit type
+          const matchingForCredit = [];
+          expensesByType.forEach((expenseList, normalizedType) => {
+            if (normalizedType.includes(creditType) || creditType.includes(normalizedType)) {
+              expenseList.forEach((expense) => {
+                const key = `${expense.serviceDate}-${expense.serviceType}`;
+                if (!usedExpenseKeys.has(key) && !existingServiceKeys.has(key)) {
+                  matchingForCredit.push(expense);
+                }
+              });
+            }
+          });
+
+          console.log("matchingForCredit", matchingForCredit);
+
+          if (matchingForCredit.length === 0) return;
+
+          // Group by date
+          const expensesByDate = new Map();
+          matchingForCredit.forEach((expense) => {
+            const date = expense.serviceDate;
+            if (!expensesByDate.has(date)) {
+              expensesByDate.set(date, []);
+            }
+            expensesByDate.get(date).push(expense);
+          });
+
+          console.log("expensesByDate", expensesByDate);
+
+          // If multiple dates: take only one (first one)
+          // If same date: take all with that date
+          if (expensesByDate.size > 1) {
+            // Different dates - take only one (first occurrence)
+            const firstExpense = matchingForCredit[0];
+            const key = `${firstExpense.serviceDate}-${firstExpense.serviceType}`;
+            if (!usedExpenseKeys.has(key)) {
+              uniqueServices.push(firstExpense);
+              usedExpenseKeys.add(key);
+            }
+          } else {
+            // Same date (or single expense) - take all
+            matchingForCredit.forEach((expense) => {
+              const key = `${expense.serviceDate}-${expense.serviceType}`;
+              if (!usedExpenseKeys.has(key)) {
+                uniqueServices.push(expense);
+                usedExpenseKeys.add(key);
+              }
+            });
+          }
+        });
+
+        console.log("uniqueServices", uniqueServices);
 
         if (uniqueServices.length === 0) return null;
 
@@ -803,8 +884,6 @@ const creditStrings = [
               ]
             : [];
 
-        const normalize = (str) =>
-          str?.toLowerCase().replace(/\s+/g, " ").trim();
 
         const isPMS = (str) =>
           /pms|preventive\s*maintenance/i.test(str || "");
