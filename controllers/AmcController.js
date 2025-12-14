@@ -843,10 +843,11 @@ exports.addExpenseData = async (req, res) => {
             for (const [date, expenseList] of expensesByDate) {
               if (addedCount >= creditCount) break;
               
-              for (const expense of expenseList) {
+              for (let index = 0; index < expenseList.length; index++) {
                 if (addedCount >= creditCount) break;
                 
-                const key = `${expense.serviceDate}-${expense.serviceType}`;
+                const expense = expenseList[index];
+                const key = `${expense.serviceDate}-${expense.serviceType}-${index}`;
                 if (!usedExpenseKeys.has(key)) {
                   uniqueServices.push(expense);
                   usedExpenseKeys.add(key);
