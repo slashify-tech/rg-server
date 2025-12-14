@@ -833,19 +833,27 @@ exports.addExpenseData = async (req, res) => {
           });
 
           console.log("expensesByDate", expensesByDate);
+          console.log("creditCount", creditCount);
 
-          // If multiple dates: take only one (first one)
+          // If multiple dates: take one per date, up to creditCount
           // If same date: take all with that date
           if (expensesByDate.size > 1) {
-            // Different dates - take only one (first occurrence)
-            const firstExpense = matchingForCredit[0];
-            const key = `${firstExpense.serviceDate}-${firstExpense.serviceType}`;
-            if (!usedExpenseKeys.has(key)) {
-              uniqueServices.push(firstExpense);
-              usedExpenseKeys.add(key);
+            // Different dates - take one expense from each date, up to creditCount
+            let addedCount = 0;
+            for (const [date, expenseList] of expensesByDate) {
+              if (addedCount >= creditCount) break;
+              
+              // Take first expense from this date
+              const expense = expenseList[0];
+              const key = `${expense.serviceDate}-${expense.serviceType}`;
+              if (!usedExpenseKeys.has(key)) {
+                uniqueServices.push(expense);
+                usedExpenseKeys.add(key);
+                addedCount++;
+              }
             }
           } else {
-            // Same date (or single expense) - take all
+            // Same date (or single expense) - take all expenses with that date
             matchingForCredit.forEach((expense) => {
               const key = `${expense.serviceDate}-${expense.serviceType}`;
               if (!usedExpenseKeys.has(key)) {
