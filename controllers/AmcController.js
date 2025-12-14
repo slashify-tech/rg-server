@@ -749,12 +749,22 @@ exports.addExpenseData = async (req, res) => {
             (e) => `${e.serviceDate}-${e.serviceType}`
           )
         );
-        const creditStrings = credits
+const creditStrings = [
+  ...new Set(
+    credits.map(str => {
+      if (str.includes("PMS")) {
+        // Remove "1st ", "2nd ", "3rd ", "4th ", etc. ONLY for PMS
+        return str.replace(/^\d+(st|nd|rd|th)\s+/i, "");
+      }
+      return str?.trim(); // keep original for non-PMS strings
+    })
+  )
+];
         console.log("creditStrings",creditStrings);
         const uniqueServices = expenses.filter((e) => {
           const key = `${e.serviceDate}-${e.serviceType}`;
 
-          console.log("creditStrings -> ",creditStrings.some(str => key.includes(str)));
+          console.log("creditStrings -> ",creditStrings.some(str => key.includes(str?.trim())));
           console.log("existingServiceKeys -> ",existingServiceKeys.has(key));
   
           return (
