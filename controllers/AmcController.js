@@ -764,11 +764,13 @@ const creditStrings = [
         const uniqueServices = expenses.filter((e) => {
           const key = `${e.serviceDate}-${e.serviceType}`;
 
+          console.log("key : " , key)
+
           console.log("creditStrings -> ",creditStrings.some(str => key.includes(str?.trim())));
           console.log("existingServiceKeys -> ",existingServiceKeys.has(key));
   
           return (
-            creditStrings.some(str => key.includes(str)) &&   // must match credit
+            creditStrings.some(str => key.includes(str?.trim())) &&   // must match credit
             !existingServiceKeys.has(key) 
           );
         });
