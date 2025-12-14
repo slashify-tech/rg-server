@@ -748,10 +748,17 @@ exports.addExpenseData = async (req, res) => {
             (e) => `${e.serviceDate}-${e.serviceType}`
           )
         );
+        const creditStrings = amcRecord?.totalCredit?.map(
+          (c) => c.credit // whatever field you're matching against
+        ) || [];
 
         const uniqueServices = expenses.filter((e) => {
           const key = `${e.serviceDate}-${e.serviceType}`;
-          return !existingServiceKeys.has(key);
+  
+          return (
+            creditStrings.some(str => key.includes(str)) &&   // must match credit
+            !existingServiceKeys.has(key) 
+          );
         });
 
         if (uniqueServices.length === 0) return null;
