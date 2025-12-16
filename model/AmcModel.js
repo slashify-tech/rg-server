@@ -185,7 +185,7 @@ const AMCschema = mongoose.Schema(
     },
     amcStatus: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "approved", "rejected", "terminated"],
       default: "pending",
     },
 

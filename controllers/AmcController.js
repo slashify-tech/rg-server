@@ -19,6 +19,7 @@ exports.AmcFormData = async (req, res) => {
     const email = amcData.customerDetails.email;
     const duplicateVinNumber = await AMCs.findOne({
       "vehicleDetails.vinNumber": vinNumber,
+      isDisabled: { $ne: true },
     });
     if (duplicateVinNumber) {
       return res.status(400).json({
@@ -136,7 +137,7 @@ exports.addRefundAndExpense = async (req, res) => {
       refundedAmount,
       submittedAt: new Date(),
     };
-
+    AMCdata.amcStatus = "terminated";
     await AMCdata.save();
 
     return res.status(200).json({
@@ -160,6 +161,7 @@ exports.AmcSalesFormData = async (req, res) => {
     const email = amcData.customerDetails.email;
     const duplicateVinNumber = await AMCs.findOne({
       "vehicleDetails.vinNumber": vinNumber,
+      isDisabled: { $ne: true },
     });
     if (duplicateVinNumber) {
       return res.status(400).json({
@@ -747,7 +749,7 @@ exports.addExpenseData = async (req, res) => {
         const existingServiceKeys = new Set(
           amcRecord?.amcExpense?.map((e) => `${e.serviceDate}-${e.serviceType}`)
         );
-        
+
         const normalize = (str) =>
           str?.toLowerCase().replace(/\s+/g, " ").trim();
 
@@ -765,14 +767,16 @@ exports.addExpenseData = async (req, res) => {
         // Filter expenses that match credits and are not already existing
         const matchingExpenses = expenses.filter((e) => {
           const key = `${e.serviceDate}-${e.serviceType}`;
-          
+
           // Skip if already exists
           if (existingServiceKeys.has(key)) return false;
 
           // Check if service type matches any credit
           const normalizedServiceType = normalize(e.serviceType);
-          return normalizedCredits.some((credit) => 
-            normalizedServiceType.includes(credit) || credit.includes(normalizedServiceType)
+          return normalizedCredits.some(
+            (credit) =>
+              normalizedServiceType.includes(credit) ||
+              credit.includes(normalizedServiceType)
           );
         });
 
@@ -808,10 +812,16 @@ exports.addExpenseData = async (req, res) => {
           // Find all expenses that match this credit type
           const matchingForCredit = [];
           expensesByType.forEach((expenseList, normalizedType) => {
-            if (normalizedType.includes(creditType) || creditType.includes(normalizedType)) {
+            if (
+              normalizedType.includes(creditType) ||
+              creditType.includes(normalizedType)
+            ) {
               expenseList.forEach((expense) => {
                 const key = `${expense.serviceDate}-${expense.serviceType}`;
-                if (!usedExpenseKeys.has(key) && !existingServiceKeys.has(key)) {
+                if (
+                  !usedExpenseKeys.has(key) &&
+                  !existingServiceKeys.has(key)
+                ) {
                   matchingForCredit.push(expense);
                 }
               });
@@ -842,10 +852,10 @@ exports.addExpenseData = async (req, res) => {
             let addedCount = 0;
             for (const [date, expenseList] of expensesByDate) {
               if (addedCount >= creditCount) break;
-              
+
               for (let index = 0; index < expenseList.length; index++) {
                 if (addedCount >= creditCount) break;
-                
+
                 const expense = expenseList[index];
                 const key = `${expense.serviceDate}-${expense.serviceType}-${index}`;
                 if (!usedExpenseKeys.has(key)) {
@@ -884,21 +894,18 @@ exports.addExpenseData = async (req, res) => {
           .map((p, i) => ({ p, i }))
           .filter(({ p }) => p.extendedStatus === "approved")
           .sort(
-            (a, b) =>
-              new Date(b.p.submittedAt) - new Date(a.p.submittedAt)
+            (a, b) => new Date(b.p.submittedAt) - new Date(a.p.submittedAt)
           )[0]?.i;
 
         let extUpcoming =
           latestExtIndex !== undefined
             ? [
-                ...(amcRecord.extendedPolicy[latestExtIndex]
-                  ?.upcomingPackage || []),
+                ...(amcRecord.extendedPolicy[latestExtIndex]?.upcomingPackage ||
+                  []),
               ]
             : [];
 
-
-        const isPMS = (str) =>
-          /pms|preventive\s*maintenance/i.test(str || "");
+        const isPMS = (str) => /pms|preventive\s*maintenance/i.test(str || "");
 
         const getOrdinal = (str) => {
           const match = str?.match(/(\d+)(st|nd|rd|th)/i);
@@ -906,9 +913,7 @@ exports.addExpenseData = async (req, res) => {
         };
 
         const removeService = (arr, value) => {
-          const idx = arr.findIndex(
-            (x) => normalize(x) === normalize(value)
-          );
+          const idx = arr.findIndex((x) => normalize(x) === normalize(value));
           if (idx !== -1) {
             arr.splice(idx, 1);
             return true;
@@ -935,9 +940,7 @@ exports.addExpenseData = async (req, res) => {
 
           if (!allPMS.length) return;
 
-          allPMS.sort(
-            (a, b) => getOrdinal(a.v) - getOrdinal(b.v)
-          );
+          allPMS.sort((a, b) => getOrdinal(a.v) - getOrdinal(b.v));
 
           const toRemove = allPMS[0];
 
@@ -951,8 +954,7 @@ exports.addExpenseData = async (req, res) => {
         if (latestExtIndex !== undefined) {
           updateFields.$set = {
             "vehicleDetails.custUpcomingService": upcoming,
-            [`extendedPolicy.${latestExtIndex}.upcomingPackage`]:
-              extUpcoming,
+            [`extendedPolicy.${latestExtIndex}.upcomingPackage`]: extUpcoming,
           };
         } else {
           updateFields.$set = {
@@ -1286,6 +1288,9 @@ exports.downloadAmcCsv = async (req, res) => {
         "Parts Price": totals.parts || "",
         "Vas Price": totals.vas || "",
         "Labour Price": totals.labour || "",
+        "Create Time": policy.createdAt || "",
+        "Approval Time": policy.approvedAt || "",
+        "AMC Type": policy.customerDetails.amcType || "",
       };
     });
 
