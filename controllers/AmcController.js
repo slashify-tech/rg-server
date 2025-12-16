@@ -837,7 +837,7 @@ exports.addExpenseData = async (req, res) => {
 
           // If multiple dates: take one per date, up to creditCount
           // If same date: take all with that date
-          if (expensesByDate.size > 1) {
+          if (expensesByDate.size > 0) {
             // Different dates - take all expenses from each date, up to creditCount
             let addedCount = 0;
             for (const [date, expenseList] of expensesByDate) {
