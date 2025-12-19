@@ -1291,9 +1291,10 @@ exports.downloadAmcCsv = async (req, res) => {
         "Create Time": policy.createdAt || "",
         "Approval Time": policy.approvedAt || "",
         "AMC Type": policy.customerDetails.amcType || "",
-      };
+        "BuybackSold to RG": policy.amcAssuredAdditionalData?.buybackOrSoldToRG || "",
+        "Refunded Amount": policy.amcAssuredAdditionalData?.refundedAmount || "",
+         };
     });
-
     // Convert JSON to CSV
     const json2csv = new Parser();
     const csvDataString = json2csv.parse(csvData);
