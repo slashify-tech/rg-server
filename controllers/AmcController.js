@@ -727,6 +727,7 @@ exports.addExpenseData = async (req, res) => {
 
     const amcRecords = await AMCs.find({
       "vehicleDetails.vinNumber": { $in: vinNumbers },
+      "amcStatus": "approved",
     });
 
     if (amcRecords.length === 0) {
