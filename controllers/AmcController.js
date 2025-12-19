@@ -1074,21 +1074,7 @@ exports.getamcStats = async (req, res) => {
 
         // ------------------ FREE SERVICE LOGIC ------------------
         else if (key.includes("free")) {
-          freeTracker[vin] = (freeTracker[vin] || 0) + 1;
-
-          const count = freeTracker[vin];
-          if (count > 5) return;
-
-          const suffix =
-            count === 1
-              ? "1st"
-              : count === 2
-              ? "2nd"
-              : count === 3
-              ? "3rd"
-              : `${count}th`;
-
-          key = `${suffix} Free Service`;
+          key = item?.serviceType?.trim() || "";
         }
 
         // accumulate AMOUNT instead of COUNT
