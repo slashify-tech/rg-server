@@ -1054,11 +1054,11 @@ exports.getamcStats = async (req, res) => {
     const serviceTypeAmount = {};
 
     // Track PMS & Free services per VIN
-    const pmsTracker = {};
     const freeTracker = {};
-
+    
     amcDocs.forEach((doc) => {
       const vin = doc.vehicleDetails?.vinNumber;
+      const pmsTracker = {};
 
       doc.amcExpense?.forEach((item) => {
         totalPartsPrice += Number(item.partsPrice || 0);
@@ -1072,21 +1072,44 @@ exports.getamcStats = async (req, res) => {
 
         // ------------------ PMS LOGIC ------------------
         if (key.includes("pms")) {
-          pmsTracker[vin] = (pmsTracker[vin] || 0) + 1;
-          const count = pmsTracker[vin];
+          const serviceDate = item.serviceDate || "";
+          
+          // Initialize tracker for this VIN if it doesn't exist
+          if (!pmsTracker[vin]) {
+            pmsTracker[vin] = {
+              count: 0,
+              key: "",
+              lastServiceDateKey: ""
+            };
+          }
 
-          if (count > 7) return;
+          // Only increment count if service date has changed
+          if ((serviceDate + "-" + key) !== pmsTracker[vin].lastServiceDateKey) {
+            const currentCount = pmsTracker[vin].count + 1;
+            
+            if (currentCount > 7) return;
 
-          const suffix =
-            count === 1
-              ? "1st"
-              : count === 2
-              ? "2nd"
-              : count === 3
-              ? "3rd"
-              : `${count}th`;
+            const suffix =
+              currentCount === 1
+                ? "1st"
+                : currentCount === 2
+                ? "2nd"
+                : currentCount === 3
+                ? "3rd"
+                : `${currentCount}th`;
 
-          key = `${suffix} Preventive Maintenance Service (PMS)`;
+            const pmsKey = `${suffix} Preventive Maintenance Service (PMS)`;
+            
+            // Store count, key, and service date object
+            pmsTracker[vin].count = currentCount;
+            pmsTracker[vin].key = pmsKey;
+            pmsTracker[vin].lastServiceDateKey = serviceDate + "-" + pmsKey;
+            
+            key = pmsKey;
+          } else {
+            // Same date - reuse existing key (don't increment count)
+            key = pmsTracker[vin].key;
+          }
         }
 
         // ------------------ FREE SERVICE LOGIC ------------------
