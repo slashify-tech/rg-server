@@ -102,7 +102,7 @@ exports.editAmc = async (req, res) => {
       new: true,
       runValidators: true,
     });
-
+  
     if (!updateVinNumber) {
       return res.status(404).json({ message: "AMC not found" });
     }
@@ -223,6 +223,7 @@ exports.createExtendedPolicy = async (req, res) => {
     validDate,
     validMileage,
     openForm,
+    salesTeamEmail,
     edit,
   } = req.body;
 
@@ -267,6 +268,7 @@ exports.createExtendedPolicy = async (req, res) => {
         paymentCopyProof,
         upcomingPackage,
         validMileage,
+        salesTeamEmail,
         validDate,
         openForm,
         updatedAt: new Date(),
@@ -364,62 +366,77 @@ exports.updateAMCStatus = async (req, res) => {
     }
 
     // Handle rejection case
-    if (type === "rejected") {
-      if (!reason) {
-        return res
-          .status(400)
-          .json({ message: "Rejection reason is required." });
-      }
-      if (
-        AMCdata.isAmcSalesOrService === true ||
-        AMCdata.extendedPolicy?.openForm === true
-      ) {
-        await AgentPolicyRejectedEmail(
-          AMCdata.vehicleDetails.salesTeamEmail,
-          "User",
-          reason,
-          "AMC(Annual Maintenance Contract)",
-          AMCdata.vehicleDetails.vinNumber,
-          AMCdata.customId,
-          "AMC",
-          "Raam4Wheelers LLP"
-        );
+  if (type === "rejected") {
+  if (!reason) {
+    return res.status(400).json({
+      message: "Rejection reason is required.",
+    });
+  }
 
-        await AMCs.findByIdAndDelete(id);
+  const hasExtendedPolicy =
+    Array.isArray(AMCdata.extendedPolicy) &&
+    AMCdata.extendedPolicy.length > 0;
 
-        // console.log(`AMCdata with ID: ${id} deleted immediately`);
+// Get latest pending extended policy (from last to first)
+const latestPendingExtendedPolicy = Array.isArray(AMCdata.extendedPolicy)
+  ? [...AMCdata.extendedPolicy]
+      .reverse()
+      .find(ep => ep.extendedStatus === "pending")
+  : null;
 
-        return res.status(200).json({
-          message: "AMC rejected & deleted",
-          status: 200,
-        });
-      }
+const salesTeamEmail =
+  latestPendingExtendedPolicy?.salesTeamEmail ||
+  AMCdata.vehicleDetails.salesTeamEmail || agent.email;
+console.log(salesTeamEmail)
+if (AMCdata.isAmcSalesOrService || latestPendingExtendedPolicy) {
+  await AgentPolicyRejectedEmail(
+    salesTeamEmail,
+    "User",
+    reason,
+    "AMC(Annual Maintenance Contract)",
+    AMCdata.vehicleDetails.vinNumber,
+    AMCdata.customId,
+    "AMC",
+    "Raam4Wheelers LLP"
+  );
+}
 
-      const deletionDate = new Date();
-      deletionDate.setDate(deletionDate.getDate() + 3);
 
-      AMCdata.rejectionReason = reason;
-      AMCdata.rejectedAt = deletionDate;
-      AMCdata.amcStatus = "rejected";
+  if (!hasExtendedPolicy) {
+    await AMCs.findByIdAndDelete(id);
 
-      await AMCdata.save();
-      console.log(
-        `AMCdata with ID: ${id} scheduled for deletion with reason: ${reason}.`
-      );
+    return res.status(200).json({
+      message: "AMC rejected and deleted (no extended policy)",
+      status: 200,
+    });
+  }
 
-      await AgentPolicyRejectedEmail(
-        agent.email,
-        agent.agentName,
-        reason,
-        "AMC(Annual Maintenance Contract)",
-        AMCdata.vehicleDetails.vinNumber,
-        AMCdata.customId,
-        "AMC",
-        "Raam4Wheelers LLP"
-      );
+  // ✅ ELSE: mark rejected but keep record
+  const deletionDate = new Date();
+  deletionDate.setDate(deletionDate.getDate() + 3);
 
-      return res.status(200).json({ message: "AMC rejected", AMCdata });
-    }
+  AMCdata.rejectionReason = reason;
+  AMCdata.rejectedAt = deletionDate;
+  AMCdata.amcStatus = "rejected";
+
+  await AMCdata.save();
+
+  await AgentPolicyRejectedEmail(
+    agent.email,
+    agent.agentName,
+    reason,
+    "AMC(Annual Maintenance Contract)",
+    AMCdata.vehicleDetails.vinNumber,
+    AMCdata.customId,
+    "AMC",
+    "Raam4Wheelers LLP"
+  );
+
+  return res.status(200).json({
+    message: "AMC rejected but not deleted (extended policy exists)",
+    AMCdata,
+  });
+}
 
     // Handle approval case
     if (type === "approved") {
