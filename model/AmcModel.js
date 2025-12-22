@@ -158,6 +158,9 @@ const extendedPolicySchema = mongoose.Schema({
   upcomingPackage: {
     type: Array,
   },
+  salesTeamEmail:{
+    type: String,
+  }
 });
 
 const amcAssuredSchema = mongoose.Schema({
