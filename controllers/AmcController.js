@@ -1036,6 +1036,12 @@ exports.getamcStats = async (req, res) => {
     // Instead of count → store TOTAL AMOUNT
     const serviceTypeAmount = {};
 
+    const parseDDMMYYYY = (dateStr) => {
+      if (!dateStr) return 0;
+      const [dd, mm, yyyy] = dateStr.split("-");
+      return new Date(Number(yyyy), Number(mm) - 1, Number(dd)).getTime();
+    };
+
     // Track PMS & Free services per VIN
     const freeTracker = {};
     
@@ -1043,7 +1049,14 @@ exports.getamcStats = async (req, res) => {
       const vin = doc.vehicleDetails?.vinNumber;
       const pmsTracker = {};
 
-      doc.amcExpense?.forEach((item) => {
+      const sortedExpenses = [...(doc.amcExpense || [])].sort((a, b) => {
+        console.log("dateA", a.serviceDate);
+        console.log("dateB", b.serviceDate);
+        return parseDDMMYYYY(a.serviceDate) - parseDDMMYYYY(b.serviceDate); // ascending (oldest → newest)
+      });
+      // console.log("sortedExpenses", sortedExpenses);
+
+      sortedExpenses?.forEach((item) => {
         totalPartsPrice += Number(item.partsPrice || 0);
         totalLabourPrice += Number(item.labourPrice || 0);
         totalVasPrice += Number(item.vasPrice || 0);
@@ -1066,8 +1079,10 @@ exports.getamcStats = async (req, res) => {
             };
           }
 
+          const dateKey = `${serviceDate}-${key}`;
+
           // Only increment count if service date has changed
-          if ((serviceDate + "-" + key) !== pmsTracker[vin].lastServiceDateKey) {
+          if (dateKey !== pmsTracker[vin].lastServiceDateKey) {
             const currentCount = pmsTracker[vin].count + 1;
             
             if (currentCount > 7) return;
@@ -1086,7 +1101,7 @@ exports.getamcStats = async (req, res) => {
             // Store count, key, and service date object
             pmsTracker[vin].count = currentCount;
             pmsTracker[vin].key = pmsKey;
-            pmsTracker[vin].lastServiceDateKey = serviceDate + "-" + pmsKey;
+            pmsTracker[vin].lastServiceDateKey = dateKey;
             
             key = pmsKey;
           } else {
