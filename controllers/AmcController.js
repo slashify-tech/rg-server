@@ -384,11 +384,13 @@ const latestPendingExtendedPolicy = Array.isArray(AMCdata.extendedPolicy)
       .find(ep => ep.extendedStatus === "pending")
   : null;
 
-const salesTeamEmail =
+
+
+// console.log(salesTeamEmail, "test")
+
+  const salesTeamEmail =
   latestPendingExtendedPolicy?.salesTeamEmail ||
   AMCdata.vehicleDetails.salesTeamEmail || agent.email;
-console.log(salesTeamEmail)
-if (AMCdata.isAmcSalesOrService || latestPendingExtendedPolicy) {
   await AgentPolicyRejectedEmail(
     salesTeamEmail,
     "User",
@@ -399,10 +401,9 @@ if (AMCdata.isAmcSalesOrService || latestPendingExtendedPolicy) {
     "AMC",
     "Raam4Wheelers LLP"
   );
-}
 
 
-  if (!hasExtendedPolicy) {
+  if (!hasExtendedPolicy && AMCdata.isAmcSalesOrService === true) {
     await AMCs.findByIdAndDelete(id);
 
     return res.status(200).json({
@@ -411,7 +412,7 @@ if (AMCdata.isAmcSalesOrService || latestPendingExtendedPolicy) {
     });
   }
 
-  // ✅ ELSE: mark rejected but keep record
+  // ELSE: mark rejected but keep record
   const deletionDate = new Date();
   deletionDate.setDate(deletionDate.getDate() + 3);
 
@@ -421,16 +422,6 @@ if (AMCdata.isAmcSalesOrService || latestPendingExtendedPolicy) {
 
   await AMCdata.save();
 
-  await AgentPolicyRejectedEmail(
-    agent.email,
-    agent.agentName,
-    reason,
-    "AMC(Annual Maintenance Contract)",
-    AMCdata.vehicleDetails.vinNumber,
-    AMCdata.customId,
-    "AMC",
-    "Raam4Wheelers LLP"
-  );
 
   return res.status(200).json({
     message: "AMC rejected but not deleted (extended policy exists)",
