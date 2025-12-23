@@ -284,6 +284,7 @@ exports.createExtendedPolicy = async (req, res) => {
         upcomingPackage,
         validMileage,
         validDate,
+        salesTeamEmail,
         openForm,
         extendedStatus: "pending",
         submittedAt: new Date(),
@@ -415,6 +416,7 @@ const latestPendingExtendedPolicy = Array.isArray(AMCdata.extendedPolicy)
   // ELSE: mark rejected but keep record
   const deletionDate = new Date();
   deletionDate.setDate(deletionDate.getDate() + 3);
+
 
   AMCdata.rejectionReason = reason;
   AMCdata.rejectedAt = deletionDate;
