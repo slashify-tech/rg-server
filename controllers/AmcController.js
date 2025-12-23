@@ -102,7 +102,7 @@ exports.editAmc = async (req, res) => {
       new: true,
       runValidators: true,
     });
-
+  
     if (!updateVinNumber) {
       return res.status(404).json({ message: "AMC not found" });
     }
@@ -187,6 +187,7 @@ exports.AmcSalesFormData = async (req, res) => {
       amcData.vehicleDetails.custUpcomingService.length > 0
     ) {
       totalCredit = [...amcData.vehicleDetails.custUpcomingService];
+      
     }
     const newAmc = new AMCs({
       ...amcData,
@@ -223,6 +224,7 @@ exports.createExtendedPolicy = async (req, res) => {
     validDate,
     validMileage,
     openForm,
+    salesTeamEmail,
     edit,
   } = req.body;
 
@@ -267,6 +269,7 @@ exports.createExtendedPolicy = async (req, res) => {
         paymentCopyProof,
         upcomingPackage,
         validMileage,
+        salesTeamEmail,
         validDate,
         openForm,
         updatedAt: new Date(),
@@ -282,6 +285,7 @@ exports.createExtendedPolicy = async (req, res) => {
         upcomingPackage,
         validMileage,
         validDate,
+        salesTeamEmail,
         openForm,
         extendedStatus: "pending",
         submittedAt: new Date(),
@@ -364,62 +368,69 @@ exports.updateAMCStatus = async (req, res) => {
     }
 
     // Handle rejection case
-    if (type === "rejected") {
-      if (!reason) {
-        return res
-          .status(400)
-          .json({ message: "Rejection reason is required." });
-      }
-      if (
-        AMCdata.isAmcSalesOrService === true ||
-        AMCdata.extendedPolicy?.openForm === true
-      ) {
-        await AgentPolicyRejectedEmail(
-          AMCdata.vehicleDetails.salesTeamEmail,
-          "User",
-          reason,
-          "AMC(Annual Maintenance Contract)",
-          AMCdata.vehicleDetails.vinNumber,
-          AMCdata.customId,
-          "AMC",
-          "Raam4Wheelers LLP"
-        );
+  if (type === "rejected") {
+  if (!reason) {
+    return res.status(400).json({
+      message: "Rejection reason is required.",
+    });
+  }
 
-        await AMCs.findByIdAndDelete(id);
+  const hasExtendedPolicy =
+    Array.isArray(AMCdata.extendedPolicy) &&
+    AMCdata.extendedPolicy.length > 0;
 
-        // console.log(`AMCdata with ID: ${id} deleted immediately`);
+// Get latest pending extended policy (from last to first)
+const latestPendingExtendedPolicy = Array.isArray(AMCdata.extendedPolicy)
+  ? [...AMCdata.extendedPolicy]
+      .reverse()
+      .find(ep => ep.extendedStatus === "pending")
+  : null;
 
-        return res.status(200).json({
-          message: "AMC rejected & deleted",
-          status: 200,
-        });
-      }
 
-      const deletionDate = new Date();
-      deletionDate.setDate(deletionDate.getDate() + 3);
 
-      AMCdata.rejectionReason = reason;
-      AMCdata.rejectedAt = deletionDate;
-      AMCdata.amcStatus = "rejected";
+// console.log(salesTeamEmail, "test")
 
-      await AMCdata.save();
-      console.log(
-        `AMCdata with ID: ${id} scheduled for deletion with reason: ${reason}.`
-      );
+  const salesTeamEmail =
+  latestPendingExtendedPolicy?.salesTeamEmail ||
+  AMCdata.vehicleDetails.salesTeamEmail || agent.email;
+  await AgentPolicyRejectedEmail(
+    salesTeamEmail,
+    "User",
+    reason,
+    "AMC(Annual Maintenance Contract)",
+    AMCdata.vehicleDetails.vinNumber,
+    AMCdata.customId,
+    "AMC",
+    "Raam4Wheelers LLP"
+  );
 
-      await AgentPolicyRejectedEmail(
-        agent.email,
-        agent.agentName,
-        reason,
-        "AMC(Annual Maintenance Contract)",
-        AMCdata.vehicleDetails.vinNumber,
-        AMCdata.customId,
-        "AMC",
-        "Raam4Wheelers LLP"
-      );
 
-      return res.status(200).json({ message: "AMC rejected", AMCdata });
-    }
+  if (!hasExtendedPolicy && AMCdata.isAmcSalesOrService === true) {
+    await AMCs.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      message: "AMC rejected and deleted (no extended policy)",
+      status: 200,
+    });
+  }
+
+  // ELSE: mark rejected but keep record
+  const deletionDate = new Date();
+  deletionDate.setDate(deletionDate.getDate() + 3);
+
+
+  AMCdata.rejectionReason = reason;
+  AMCdata.rejectedAt = deletionDate;
+  AMCdata.amcStatus = "rejected";
+
+  await AMCdata.save();
+
+
+  return res.status(200).json({
+    message: "AMC rejected but not deleted (extended policy exists)",
+    AMCdata,
+  });
+}
 
     // Handle approval case
     if (type === "approved") {
@@ -769,7 +780,7 @@ exports.addExpenseData = async (req, res) => {
         const matchingExpenses = expenses.filter((e) => {
           const key = `${e.serviceDate}-${e.serviceType}`;
 
-          // Skip if already exists
+          // Skip if already exists7484030523
           if (existingServiceKeys.has(key)) return false;
 
           // Check if service type matches any credit
@@ -1036,14 +1047,27 @@ exports.getamcStats = async (req, res) => {
     // Instead of count → store TOTAL AMOUNT
     const serviceTypeAmount = {};
 
-    // Track PMS & Free services per VIN
-    const pmsTracker = {};
-    const freeTracker = {};
+    const parseDDMMYYYY = (dateStr) => {
+      if (!dateStr) return 0;
+      const [dd, mm, yyyy] = dateStr.split("-");
+      return new Date(Number(yyyy), Number(mm) - 1, Number(dd)).getTime();
+    };
 
+    // Track PMS & Free services per VIN
+    const freeTracker = {};
+    
     amcDocs.forEach((doc) => {
       const vin = doc.vehicleDetails?.vinNumber;
+      const pmsTracker = {};
 
-      doc.amcExpense?.forEach((item) => {
+      const sortedExpenses = [...(doc.amcExpense || [])].sort((a, b) => {
+        console.log("dateA", a.serviceDate);
+        console.log("dateB", b.serviceDate);
+        return parseDDMMYYYY(a.serviceDate) - parseDDMMYYYY(b.serviceDate); // ascending (oldest → newest)
+      });
+      // console.log("sortedExpenses", sortedExpenses);
+
+      sortedExpenses?.forEach((item) => {
         totalPartsPrice += Number(item.partsPrice || 0);
         totalLabourPrice += Number(item.labourPrice || 0);
         totalVasPrice += Number(item.vasPrice || 0);
@@ -1055,21 +1079,46 @@ exports.getamcStats = async (req, res) => {
 
         // ------------------ PMS LOGIC ------------------
         if (key.includes("pms")) {
-          pmsTracker[vin] = (pmsTracker[vin] || 0) + 1;
-          const count = pmsTracker[vin];
+          const serviceDate = item.serviceDate || "";
+          
+          // Initialize tracker for this VIN if it doesn't exist
+          if (!pmsTracker[vin]) {
+            pmsTracker[vin] = {
+              count: 0,
+              key: "",
+              lastServiceDateKey: ""
+            };
+          }
 
-          if (count > 7) return;
+          const dateKey = `${serviceDate}-${key}`;
 
-          const suffix =
-            count === 1
-              ? "1st"
-              : count === 2
-              ? "2nd"
-              : count === 3
-              ? "3rd"
-              : `${count}th`;
+          // Only increment count if service date has changed
+          if (dateKey !== pmsTracker[vin].lastServiceDateKey) {
+            const currentCount = pmsTracker[vin].count + 1;
+            
+            if (currentCount > 7) return;
 
-          key = `${suffix} Preventive Maintenance Service (PMS)`;
+            const suffix =
+              currentCount === 1
+                ? "1st"
+                : currentCount === 2
+                ? "2nd"
+                : currentCount === 3
+                ? "3rd"
+                : `${currentCount}th`;
+
+            const pmsKey = `${suffix} Preventive Maintenance Service (PMS)`;
+            
+            // Store count, key, and service date object
+            pmsTracker[vin].count = currentCount;
+            pmsTracker[vin].key = pmsKey;
+            pmsTracker[vin].lastServiceDateKey = dateKey;
+            
+            key = pmsKey;
+          } else {
+            // Same date - reuse existing key (don't increment count)
+            key = pmsTracker[vin].key;
+          }
         }
 
         // ------------------ FREE SERVICE LOGIC ------------------
