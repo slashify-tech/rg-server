@@ -187,6 +187,7 @@ exports.AmcSalesFormData = async (req, res) => {
       amcData.vehicleDetails.custUpcomingService.length > 0
     ) {
       totalCredit = [...amcData.vehicleDetails.custUpcomingService];
+      
     }
     const newAmc = new AMCs({
       ...amcData,
@@ -779,7 +780,7 @@ exports.addExpenseData = async (req, res) => {
         const matchingExpenses = expenses.filter((e) => {
           const key = `${e.serviceDate}-${e.serviceType}`;
 
-          // Skip if already exists
+          // Skip if already exists7484030523
           if (existingServiceKeys.has(key)) return false;
 
           // Check if service type matches any credit

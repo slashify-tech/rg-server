@@ -186,6 +186,9 @@ const AMCschema = mongoose.Schema(
     totalCredit: {
       type: Array,
     },
+     availableCredit: {
+      type: Array,
+    },
     amcStatus: {
       type: String,
       enum: ["pending", "approved", "rejected", "terminated"],
