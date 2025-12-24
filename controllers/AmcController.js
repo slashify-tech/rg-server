@@ -38,17 +38,9 @@ exports.AmcFormData = async (req, res) => {
     const last5DigitsOfVin = vinNumber.slice(-5);
     const customId = `Raam-AMC-${currentYear}-${last5DigitsOfVin}`;
     // const amcCredit = Number(amcData.vehicleDetails?.agreementPeriod) || 0;
-    let totalCredit = [];
-
-    if (
-      Array.isArray(amcData?.vehicleDetails?.custUpcomingService) &&
-      amcData.vehicleDetails.custUpcomingService.length > 0
-    ) {
-      totalCredit = [...amcData.vehicleDetails.custUpcomingService];
-    }
+    
     const newAmc = new AMCs({
       ...amcData,
-      totalCredit,
       // amcCredit,
       customId,
       createdAt: new Date(),
@@ -180,18 +172,9 @@ exports.AmcSalesFormData = async (req, res) => {
     const last5DigitsOfVin = vinNumber.slice(-5);
     const customId = `Raam-AMC-${currentYear}-${last5DigitsOfVin}`;
     // const amcCredit = Number(amcData.vehicleDetails?.agreementPeriod) || 0;
-    let totalCredit = [];
-
-    if (
-      Array.isArray(amcData?.vehicleDetails?.custUpcomingService) &&
-      amcData.vehicleDetails.custUpcomingService.length > 0
-    ) {
-      totalCredit = [...amcData.vehicleDetails.custUpcomingService];
-      
-    }
+ 
     const newAmc = new AMCs({
       ...amcData,
-      totalCredit,
       // amcCredit,
       customId,
       isAmcSalesOrService: true,
@@ -433,49 +416,71 @@ const latestPendingExtendedPolicy = Array.isArray(AMCdata.extendedPolicy)
 }
 
     // Handle approval case
-    if (type === "approved") {
-      // Always ensure extendedPolicy is an array
-      if (!Array.isArray(AMCdata.extendedPolicy)) {
-        AMCdata.extendedPolicy = AMCdata.extendedPolicy
-          ? [AMCdata.extendedPolicy]
-          : [];
-      }
+   if (type === "approved") {
 
-      // Get latest extended policy entry
-      const latestPolicy =
-        AMCdata.extendedPolicy.length > 0
-          ? AMCdata.extendedPolicy[AMCdata.extendedPolicy.length - 1]
-          : null;
+  // Ensure availableCredit exists
+  if (!Array.isArray(AMCdata.availableCredit)) {
+    AMCdata.availableCredit = [];
+  }
 
-      // If extended policy exists and is pending → approve it
-      if (latestPolicy && latestPolicy.extendedStatus === "pending") {
-        latestPolicy.extendedStatus = "approved";
-      }
+  // -----------------------------
+  // 1️⃣ APPROVE LATEST EXTENDED POLICY
+  // -----------------------------
+  const latestExtendPolicy =
+    AMCdata.extendedPolicy?.length > 0
+      ? AMCdata.extendedPolicy[AMCdata.extendedPolicy.length - 1]
+      : null;
 
-      // 🔍 CHECK: If latest extended policy is approved → Add upcomingPackage to totalCredit
-      if (latestPolicy && latestPolicy.extendedStatus === "approved") {
-        // Make sure totalCredit exists and is array
-        if (!Array.isArray(AMCdata.totalCredit)) {
-          AMCdata.totalCredit = [];
-        }
+  if (
+    latestExtendPolicy &&
+    latestExtendPolicy.extendedStatus === "pending"
+  ) {
+    latestExtendPolicy.extendedStatus = "approved";
 
-        if (Array.isArray(latestPolicy.upcomingPackage)) {
-          AMCdata.totalCredit.push(...latestPolicy.upcomingPackage);
-        }
-      }
-
-      // Approve AMC
-      AMCdata.amcStatus = "approved";
-      AMCdata.approvedAt = new Date();
-
-      await AMCdata.save();
-
-      return res.status(200).json({
-        message: "AMC approved",
-        AMCdata,
-        status: 200,
-      });
+    if (Array.isArray(latestExtendPolicy.upcomingPackage)) {
+      AMCdata.availableCredit = [
+        ...new Set([
+          ...AMCdata.availableCredit,
+          ...latestExtendPolicy.upcomingPackage,
+        ]),
+      ];
+   AMCdata.totalCredit = [
+        ...new Set([
+          ...AMCdata.totalCredit,
+          ...latestExtendPolicy.upcomingPackage,
+        ]),
+      ];
     }
+  }
+
+
+  AMCdata.amcStatus = "approved";
+  AMCdata.approvedAt = new Date();
+
+  if (Array.isArray(AMCdata.vehicleDetails?.custUpcomingService)) {
+    AMCdata.availableCredit = [
+      ...new Set([
+        ...AMCdata.availableCredit,
+        ...AMCdata.vehicleDetails.custUpcomingService,
+      ]),
+    ];
+   AMCdata.totalCredit = [
+      ...new Set([
+        ...AMCdata.totalCredit,
+        ...AMCdata.vehicleDetails.custUpcomingService,
+      ]),
+    ];
+  }
+
+  await AMCdata.save();
+
+  return res.status(200).json({
+    message: "AMC approved and credits updated",
+    AMCdata,
+    status: 200,
+  });
+}
+
 
     AMCdata.amcStatus = "pending";
 
