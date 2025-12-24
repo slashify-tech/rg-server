@@ -760,7 +760,7 @@ exports.addExpenseData = async (req, res) => {
     const updates = amcRecords
       .map((amcRecord) => {
         const vinNumber = amcRecord.vehicleDetails.vinNumber;
-        const credits = amcRecord.vehicleDetails?.custUpcomingService || [];
+        const credits = amcRecord?.availableCredit || [];
         const expenses = serviceDataMap.get(vinNumber) || [];
 
         const existingServiceKeys = new Set(
@@ -904,7 +904,7 @@ exports.addExpenseData = async (req, res) => {
         };
 
         let upcoming = [
-          ...(amcRecord.vehicleDetails.custUpcomingService || []),
+          ...(amcRecord.availableCredit || []),
         ];
 
         const latestExtIndex = [...(amcRecord.extendedPolicy || [])]
@@ -971,11 +971,13 @@ exports.addExpenseData = async (req, res) => {
         if (latestExtIndex !== undefined) {
           updateFields.$set = {
             "vehicleDetails.custUpcomingService": upcoming,
+            "availableCredit": upcoming,
             [`extendedPolicy.${latestExtIndex}.upcomingPackage`]: extUpcoming,
           };
         } else {
           updateFields.$set = {
             "vehicleDetails.custUpcomingService": upcoming,
+            "availableCredit": upcoming,
           };
         }
 
