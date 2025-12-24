@@ -970,13 +970,13 @@ exports.addExpenseData = async (req, res) => {
 
         if (latestExtIndex !== undefined) {
           updateFields.$set = {
-            "vehicleDetails.custUpcomingService": upcoming,
+            // "vehicleDetails.custUpcomingService": upcoming,
             "availableCredit": upcoming,
             [`extendedPolicy.${latestExtIndex}.upcomingPackage`]: extUpcoming,
           };
         } else {
           updateFields.$set = {
-            "vehicleDetails.custUpcomingService": upcoming,
+            // "vehicleDetails.custUpcomingService": upcoming,
             "availableCredit": upcoming,
           };
         }
