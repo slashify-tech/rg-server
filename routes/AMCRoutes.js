@@ -14,6 +14,7 @@ const {
   createExtendedPolicy,
   addRefundAndExpense,
   getamcAssuredStats,
+  amcDataByIdPublic,
 } = require("../controllers/AmcController");
 const { authCheck } = require("../middleware/Auth");
 const router = express.Router();
@@ -31,6 +32,8 @@ router.patch("/edit-amc/:id",authCheck, editAmc);
 router.patch("/disable-amc",authCheck, disableAmc);
 
 router.get("/amcById", amcDataById);
+router.get("/amcByIdPub", amcDataByIdPublic);
+
 router.get("/amc-lists",authCheck, getAllAmcList);
 router.get("/amc-stats-data",authCheck, getamcStats);
 router.get("/amc-assured-stats",authCheck, getamcAssuredStats);

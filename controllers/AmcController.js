@@ -457,20 +457,25 @@ const latestPendingExtendedPolicy = Array.isArray(AMCdata.extendedPolicy)
   AMCdata.amcStatus = "approved";
   AMCdata.approvedAt = new Date();
 
-  if (Array.isArray(AMCdata.vehicleDetails?.custUpcomingService)) {
-    AMCdata.availableCredit = [
-      ...new Set([
-        ...AMCdata.availableCredit,
-        ...AMCdata.vehicleDetails.custUpcomingService,
-      ]),
-    ];
-   AMCdata.totalCredit = [
-      ...new Set([
-        ...AMCdata.totalCredit,
-        ...AMCdata.vehicleDetails.custUpcomingService,
-      ]),
-    ];
-  }
+if (
+  (!Array.isArray(AMCdata.extendedPolicy) ||
+    AMCdata.extendedPolicy.length === 0) &&
+  Array.isArray(AMCdata.vehicleDetails?.custUpcomingService)
+) {
+  AMCdata.availableCredit = [
+    ...new Set([
+      ...AMCdata.availableCredit,
+      ...AMCdata.vehicleDetails.custUpcomingService,
+    ]),
+  ];
+
+  AMCdata.totalCredit = [
+    ...new Set([
+      ...AMCdata.totalCredit,
+      ...AMCdata.vehicleDetails.custUpcomingService,
+    ]),
+  ];
+}
 
   await AMCdata.save();
 
@@ -631,6 +636,63 @@ exports.amcDataById = async (req, res) => {
       data: {
         ...finalData,
         showAmount,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching AMC data:", error);
+    return res.status(500).json({
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+exports.amcDataByIdPublic = async (req, res) => {
+  const { id, status } = req.query;
+
+  try {
+    if (!id && !status) {
+      return res.status(400).json({
+        message: "Please provide either AMCID, VIN Number, or status",
+      });
+    }
+
+    let data = null;
+
+    // Find by ObjectId or VIN
+    if (id) {
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        data = await AMCs.findOne({
+          _id: id,
+          ...(status && { amcStatus: status }),
+        });
+      }
+
+      if (!data) {
+        data = await AMCs.findOne({
+          "vehicleDetails.vinNumber": id,
+          ...(status && { amcStatus: status }),
+        });
+      }
+    }
+
+    // Find by status only
+    if (!id && status) {
+      data = await AMCs.findOne({ amcStatus: status });
+    }
+
+    if (!data) {
+      return res.status(404).json({
+        message: "No matching AMC or VIN number found",
+      });
+    }
+
+    let finalData = data.toObject();
+
+
+    return res.status(200).json({
+      message: "Data fetched successfully",
+      data: {
+        ...finalData,
       },
     });
   } catch (error) {
