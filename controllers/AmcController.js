@@ -38,17 +38,9 @@ exports.AmcFormData = async (req, res) => {
     const last5DigitsOfVin = vinNumber.slice(-5);
     const customId = `Raam-AMC-${currentYear}-${last5DigitsOfVin}`;
     // const amcCredit = Number(amcData.vehicleDetails?.agreementPeriod) || 0;
-    let totalCredit = [];
-
-    if (
-      Array.isArray(amcData?.vehicleDetails?.custUpcomingService) &&
-      amcData.vehicleDetails.custUpcomingService.length > 0
-    ) {
-      totalCredit = [...amcData.vehicleDetails.custUpcomingService];
-    }
+    
     const newAmc = new AMCs({
       ...amcData,
-      totalCredit,
       // amcCredit,
       customId,
       createdAt: new Date(),
@@ -180,18 +172,9 @@ exports.AmcSalesFormData = async (req, res) => {
     const last5DigitsOfVin = vinNumber.slice(-5);
     const customId = `Raam-AMC-${currentYear}-${last5DigitsOfVin}`;
     // const amcCredit = Number(amcData.vehicleDetails?.agreementPeriod) || 0;
-    let totalCredit = [];
-
-    if (
-      Array.isArray(amcData?.vehicleDetails?.custUpcomingService) &&
-      amcData.vehicleDetails.custUpcomingService.length > 0
-    ) {
-      totalCredit = [...amcData.vehicleDetails.custUpcomingService];
-      
-    }
+ 
     const newAmc = new AMCs({
       ...amcData,
-      totalCredit,
       // amcCredit,
       customId,
       isAmcSalesOrService: true,
@@ -433,49 +416,76 @@ const latestPendingExtendedPolicy = Array.isArray(AMCdata.extendedPolicy)
 }
 
     // Handle approval case
-    if (type === "approved") {
-      // Always ensure extendedPolicy is an array
-      if (!Array.isArray(AMCdata.extendedPolicy)) {
-        AMCdata.extendedPolicy = AMCdata.extendedPolicy
-          ? [AMCdata.extendedPolicy]
-          : [];
-      }
+   if (type === "approved") {
 
-      // Get latest extended policy entry
-      const latestPolicy =
-        AMCdata.extendedPolicy.length > 0
-          ? AMCdata.extendedPolicy[AMCdata.extendedPolicy.length - 1]
-          : null;
+  // Ensure availableCredit exists
+  if (!Array.isArray(AMCdata.availableCredit)) {
+    AMCdata.availableCredit = [];
+  }
 
-      // If extended policy exists and is pending → approve it
-      if (latestPolicy && latestPolicy.extendedStatus === "pending") {
-        latestPolicy.extendedStatus = "approved";
-      }
+  // -----------------------------
+  // 1️⃣ APPROVE LATEST EXTENDED POLICY
+  // -----------------------------
+  const latestExtendPolicy =
+    AMCdata.extendedPolicy?.length > 0
+      ? AMCdata.extendedPolicy[AMCdata.extendedPolicy.length - 1]
+      : null;
 
-      // 🔍 CHECK: If latest extended policy is approved → Add upcomingPackage to totalCredit
-      if (latestPolicy && latestPolicy.extendedStatus === "approved") {
-        // Make sure totalCredit exists and is array
-        if (!Array.isArray(AMCdata.totalCredit)) {
-          AMCdata.totalCredit = [];
-        }
+  if (
+    latestExtendPolicy &&
+    latestExtendPolicy.extendedStatus === "pending"
+  ) {
+    latestExtendPolicy.extendedStatus = "approved";
 
-        if (Array.isArray(latestPolicy.upcomingPackage)) {
-          AMCdata.totalCredit.push(...latestPolicy.upcomingPackage);
-        }
-      }
-
-      // Approve AMC
-      AMCdata.amcStatus = "approved";
-      AMCdata.approvedAt = new Date();
-
-      await AMCdata.save();
-
-      return res.status(200).json({
-        message: "AMC approved",
-        AMCdata,
-        status: 200,
-      });
+    if (Array.isArray(latestExtendPolicy.upcomingPackage)) {
+      AMCdata.availableCredit = [
+        ...new Set([
+          ...AMCdata.availableCredit,
+          ...latestExtendPolicy.upcomingPackage,
+        ]),
+      ];
+   AMCdata.totalCredit = [
+        ...new Set([
+          ...AMCdata.totalCredit,
+          ...latestExtendPolicy.upcomingPackage,
+        ]),
+      ];
     }
+  }
+
+
+  AMCdata.amcStatus = "approved";
+  AMCdata.approvedAt = new Date();
+
+if (
+  (!Array.isArray(AMCdata.extendedPolicy) ||
+    AMCdata.extendedPolicy.length === 0) &&
+  Array.isArray(AMCdata.vehicleDetails?.custUpcomingService)
+) {
+  AMCdata.availableCredit = [
+    ...new Set([
+      ...AMCdata.availableCredit,
+      ...AMCdata.vehicleDetails.custUpcomingService,
+    ]),
+  ];
+
+  AMCdata.totalCredit = [
+    ...new Set([
+      ...AMCdata.totalCredit,
+      ...AMCdata.vehicleDetails.custUpcomingService,
+    ]),
+  ];
+}
+
+  await AMCdata.save();
+
+  return res.status(200).json({
+    message: "AMC approved and credits updated",
+    AMCdata,
+    status: 200,
+  });
+}
+
 
     AMCdata.amcStatus = "pending";
 
@@ -636,6 +646,63 @@ exports.amcDataById = async (req, res) => {
     });
   }
 };
+exports.amcDataByIdPublic = async (req, res) => {
+  const { id, status } = req.query;
+
+  try {
+    if (!id && !status) {
+      return res.status(400).json({
+        message: "Please provide either AMCID, VIN Number, or status",
+      });
+    }
+
+    let data = null;
+
+    // Find by ObjectId or VIN
+    if (id) {
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        data = await AMCs.findOne({
+          _id: id,
+          ...(status && { amcStatus: status }),
+        });
+      }
+
+      if (!data) {
+        data = await AMCs.findOne({
+          "vehicleDetails.vinNumber": id,
+          ...(status && { amcStatus: status }),
+        });
+      }
+    }
+
+    // Find by status only
+    if (!id && status) {
+      data = await AMCs.findOne({ amcStatus: status });
+    }
+
+    if (!data) {
+      return res.status(404).json({
+        message: "No matching AMC or VIN number found",
+      });
+    }
+
+    let finalData = data.toObject();
+
+
+    return res.status(200).json({
+      message: "Data fetched successfully",
+      data: {
+        ...finalData,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching AMC data:", error);
+    return res.status(500).json({
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
 
 exports.getAllAmcList = async (req, res) => {
   const { page = 1, limit = 10, search = "", id, status } = req.query;
@@ -755,7 +822,7 @@ exports.addExpenseData = async (req, res) => {
     const updates = amcRecords
       .map((amcRecord) => {
         const vinNumber = amcRecord.vehicleDetails.vinNumber;
-        const credits = amcRecord.vehicleDetails?.custUpcomingService || [];
+        const credits = amcRecord?.availableCredit || [];
         const expenses = serviceDataMap.get(vinNumber) || [];
 
         const existingServiceKeys = new Set(
@@ -899,7 +966,7 @@ exports.addExpenseData = async (req, res) => {
         };
 
         let upcoming = [
-          ...(amcRecord.vehicleDetails.custUpcomingService || []),
+          ...(amcRecord.availableCredit || []),
         ];
 
         const latestExtIndex = [...(amcRecord.extendedPolicy || [])]
@@ -965,12 +1032,14 @@ exports.addExpenseData = async (req, res) => {
 
         if (latestExtIndex !== undefined) {
           updateFields.$set = {
-            "vehicleDetails.custUpcomingService": upcoming,
+            // "vehicleDetails.custUpcomingService": upcoming,
+            "availableCredit": upcoming,
             [`extendedPolicy.${latestExtIndex}.upcomingPackage`]: extUpcoming,
           };
         } else {
           updateFields.$set = {
-            "vehicleDetails.custUpcomingService": upcoming,
+            // "vehicleDetails.custUpcomingService": upcoming,
+            "availableCredit": upcoming,
           };
         }
 
