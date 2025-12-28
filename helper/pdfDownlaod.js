@@ -82,14 +82,14 @@ const renderEmailTemplate = async (data, pathData, typeData) => {
       cgstAmount = totalPrice * 0.09; // 9%
     } else {
       // CASE 2: AMC normal GST
-      totalPrice = Number(data.vehicleDetails?.gstAmount || 0);
+      totalPrice = Number(data.vehicleDetails?.gstAmount || data.vehicleDetails?.total);
 
       sgstAmount = Number(data.vehicleDetails?.sgst || 0);
       cgstAmount = Number(data.vehicleDetails?.cgst || 0);
     }
 
     const afterGstAmount = (totalPrice + sgstAmount + cgstAmount).toFixed(2);
-     console.log(afterGstAmount, totalPrice,"test")
+     console.log(afterGstAmount, totalPrice,"test", data)
 
     return ejs.render(template, {
       data: data,
@@ -140,35 +140,35 @@ const generatePdf = async (html, pdfType) => {
   let browser;
   try {
     // Launch Puppeteer with error-resilient options
-    // browser = await puppeteer.launch({
-    //   headless: true,
-    //   args: [
-    //     "--no-sandbox",
-    //     "--disable-setuid-sandbox",
-    //     "--disable-dev-shm-usage",
-    //     "--disable-accelerated-2d-canvas",
-    //     "--disable-gpu",
-    //   ],
-    //   timeout: 180000, // Increased timeout
-    // });
-
     browser = await puppeteer.launch({
-      executablePath:
-        process.env.CHROME_PATH ||
-        "/usr/bin/chromium-browser" ||
-        "/usr/bin/chromium" ||
-        "/snap/bin/chromium" ||
-        "/usr/bin/google-chrome",
-
       headless: true,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
         "--disable-gpu",
-        "--disable-software-rasterizer",
       ],
+      timeout: 180000, // Increased timeout
     });
+
+    // browser = await puppeteer.launch({
+    //   executablePath:
+    //     process.env.CHROME_PATH ||
+    //     "/usr/bin/chromium-browser" ||
+    //     "/usr/bin/chromium" ||
+    //     "/snap/bin/chromium" ||
+    //     "/usr/bin/google-chrome",
+
+    //   headless: true,
+    //   args: [
+    //     "--no-sandbox",
+    //     "--disable-setuid-sandbox",
+    //     "--disable-dev-shm-usage",
+    //     "--disable-gpu",
+    //     "--disable-software-rasterizer",
+    //   ],
+    // });
 
     const page = await browser.newPage();
 
