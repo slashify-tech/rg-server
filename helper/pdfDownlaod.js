@@ -82,7 +82,7 @@ const renderEmailTemplate = async (data, pathData, typeData) => {
       cgstAmount = totalPrice * 0.09; // 9%
     } else {
       // CASE 2: AMC normal GST
-      totalPrice = Number(data.vehicleDetails?.gstAmount || 0);
+      totalPrice = Number(data.vehicleDetails?.gstAmount || data.vehicleDetails?.total);
 
       sgstAmount = Number(data.vehicleDetails?.sgst || 0);
       cgstAmount = Number(data.vehicleDetails?.cgst || 0);
