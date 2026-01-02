@@ -51,6 +51,18 @@ const vehicleDetailsSchema = mongoose.Schema({
   rmEmail: {
     type: String,
   },
+  paymentScreenshot: {
+    type: String,
+  },
+  bookingId: {
+    type: String,
+  },
+  department: {
+    type: String,
+  },
+  paymentReceivedDateForPackage: {
+    type: String,
+  },
 });
 const buyBackDetailSchema = mongoose.Schema({
   deliveryDate: {
@@ -101,6 +113,10 @@ const BuyBackSchema = mongoose.Schema(
     },
     disabledAt: {
       type: Date,
+      required: false,
+    },
+    isSalesOrService: {
+      type: Boolean,
       required: false,
     },
     isDisabled: {

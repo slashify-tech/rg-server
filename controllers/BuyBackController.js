@@ -37,6 +37,7 @@ exports.BuyBackFormData = async (req, res) => {
     const newBuyBack = new BuyBacks({
       ...BuyBack,
       customId,
+        isSalesOrService: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -176,7 +177,9 @@ exports.updateBuyBackStatus = async (req, res) => {
         "Buyback",
         "Raam4Wheelers LLP"
       );
-
+ if (buyBackdata.isSalesOrService === true) {
+    await BuyBacks.findByIdAndDelete(id);
+ }
       return res
         .status(200)
         .json({ message: "Buyback rejected", buyBackdata, status: 200 });

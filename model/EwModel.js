@@ -124,6 +124,10 @@ const ewSchema = mongoose.Schema(
       type: Date,
       required: false,
     },
+     isSalesOrService:  {
+      type: Boolean,
+      required: false,
+    },
     disabledAt: {
       type: Date,
       required: false,

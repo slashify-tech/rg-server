@@ -34,6 +34,7 @@ exports.ewPolicyFormData = async (req, res) => {
     const newEwPolicy = new EwPolicy({
       ...ewPolicy,
       customId,
+       isSalesOrService: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -174,7 +175,9 @@ exports.updateEwStatus = async (req, res) => {
         "360 CAR PROTECT INDIA LLP",
         
       );
-
+ if (ewPolicydata.isSalesOrService === true) {
+    await EwPolicy.findByIdAndDelete(id);
+ }
       return res
         .status(200)
         .json({ message: "ewPolicy rejected", ewPolicydata, status: 200 });

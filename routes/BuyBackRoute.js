@@ -14,6 +14,7 @@ const { authCheck } = require("../middleware/Auth");
 const router = express.Router();
 
 router.post("/add-new-buy-back", authCheck, BuyBackFormData);
+router.post("/add-new-sales-buy-back", BuyBackFormData);
 router.patch("/update-buyback-status", authCheck, updateBuyBackStatus);
 router.patch("/buyback-resubmit", authCheck, buyBackResubmit);
 router.patch("/edit-buy-back/:id", authCheck, editBuyBack);

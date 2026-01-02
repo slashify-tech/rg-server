@@ -4,6 +4,8 @@ const { ewPolicyFormData, updateEwStatus, EwResubmit, editEwPolicy, disableEwPol
 const router = express.Router();
 
 router.post("/add-new-ew",authCheck, ewPolicyFormData);
+router.post("/add-new-sales-ew", ewPolicyFormData);
+
 router.patch("/update-ew-status",authCheck, updateEwStatus);
 router.patch("/ew-resubmit",authCheck, EwResubmit);
 router.patch("/edit-ew-policy/:id",authCheck, editEwPolicy);
