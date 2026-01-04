@@ -166,10 +166,11 @@ exports.updateBuyBackStatus = async (req, res) => {
       console.log(
         `buyBackdata with ID: ${id} scheduled for deletion with reason: ${reason}.`
       );
-
+ const emailData =  agent?.email || buyBackdata.vehicleDetails.rmEmail
+      const agentName =    agent?.agentName || "User"
       await AgentPolicyRejectedEmail(
-        agent.email,
-        agent.agentName,
+        emailData,
+        agentName,
         reason,
         "Buyback",
         buyBackdata.vehicleDetails.vinNumber,

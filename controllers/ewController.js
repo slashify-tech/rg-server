@@ -163,10 +163,11 @@ exports.updateEwStatus = async (req, res) => {
       console.log(
         `EW Policy with ID: ${id} scheduled for deletion with reason: ${reason}.`
       );
-
+      const emailData =  agent?.email || ewPolicydata.vehicleDetails.rmEmail
+      const agentName =    agent?.agentName || "User"
       await AgentPolicyRejectedEmail(
-        agent.email,
-        agent.agentName,
+         emailData,
+         agentName,
         reason,
         "ewPolicy",
         ewPolicydata.vehicleDetails.vinNumber,
